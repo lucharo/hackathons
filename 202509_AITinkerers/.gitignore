@@ -1,1 +1,4 @@
 .claude/
+.venv/
+.*cache/
+chainlit.md
