@@ -194,7 +194,6 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
   const handleFeedbackSubmit = () => {
     alert("This feature hasn't been implemented yet.");
     setShowFeedbackModal(false);
-    setFeedback('');
   };
 
 
@@ -243,7 +242,6 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
               <button
                 onClick={() => {
                   setShowFeedbackModal(false);
-                  setFeedback('');
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
               >
