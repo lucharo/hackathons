@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import IngredientsPlaceholder from './IngredientsPlaceholder';
+import IngredientsDisplay from './IngredientsDisplay';
 
 export interface Nutrition {
   calories: number;
@@ -262,9 +262,9 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
   };
 
 
-  // Show ingredients placeholder if that state is true
+  // Show ingredients display if that state is true
   if (showIngredientsPage) {
-    return <IngredientsPlaceholder onBack={() => setShowIngredientsPage(false)} />;
+    return <IngredientsDisplay meals={mealPlan.meals} onBack={() => setShowIngredientsPage(false)} />;
   }
 
   return (
