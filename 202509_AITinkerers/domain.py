@@ -132,7 +132,7 @@ class CollectOut(BaseModel):
 
 
 collect_agent = Agent(
-    "openai:gpt-4o-mini",
+    "anthropic:claude-4-sonnet",
     system_prompt=(
         "You are a concise nutrition intake assistant.\n"
         "Update only the profile, goal, and food preference fields you can infer from the latest reply.\n"
@@ -151,7 +151,7 @@ class RecipesOut(BaseModel):
 
 
 recipes_agent = Agent(
-    "openai:gpt-4o-mini",
+    "anthropic:claude-4-sonnet",
     system_prompt=(
         "Generate exactly two breakfast recipes and three lunch/dinner recipes.\n"
         "Each Recipe must include servings, calories_per_serving, ingredients with numeric qty + unit, and clear steps.\n"
