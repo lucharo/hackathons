@@ -1,8 +1,11 @@
 # from abc import ABC, abstractmethod
+import os
 from pydantic import BaseModel
 import instructor
 import openai
 import anthropic
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPServerStdio
 from config import settings
 
 
@@ -25,62 +28,76 @@ class LLMResponse(BaseModel):
 
 
 class BaseLLMClient:
-    """Abstract base class for LLM clients."""
+    """PydanticAI-based LLM client with MCP integration."""
 
     model: str
     openai_api_key: str
     anthropic_api_key: str
-    client: instructor.AsyncInstructor
+    agent: Agent
+    mcp_server: MCPServerStdio
 
     def __init__(self, model: str = None):
         self.model = model
         self.openai_api_key = settings.openai_api_key
         self.anthropic_api_key = settings.anthropic_api_key
-        self._initialize_client()
+        self._initialize_mcp_server()
+        self._initialize_agent()
 
-    def _initialize_client(self):
-        """Initialize the instructor client based on the model provider."""
+    def _initialize_mcp_server(self):
+        """Initialize the MCP server for Picnic integration."""
+        # Create environment dict with current env plus Picnic credentials
+        env = os.environ.copy()
+        env.update({
+            "PICNIC_USERNAME": os.getenv("PICNIC_USERNAME"),
+            "PICNIC_PASSWORD": os.getenv("PICNIC_PASSWORD")
+        })
+
+        self.mcp_server = MCPServerStdio(
+            "npx",
+            args=["-y", "mcp-picnic"],
+            timeout=30,
+            env=env
+        )
+
+    def _initialize_agent(self):
+        """Initialize the PydanticAI agent with model and MCP toolset."""
         if self.model in OPENAI_MODELS:
-            # Use instructor with OpenAI
-            openai_client = openai.AsyncOpenAI(api_key=self.openai_api_key)
-            self.client = instructor.from_openai(openai_client)
+            model_name = f"openai:{self.model}"
         elif self.model in ANTHROPIC_MODELS:
-            # Use instructor with Anthropic
-            anthropic_client = anthropic.AsyncAnthropic(api_key=self.anthropic_api_key)
-            self.client = instructor.from_anthropic(anthropic_client)
+            model_name = f"anthropic:{self.model}"
         else:
             raise NotImplementedError(f"Model {self.model} is not supported")
 
+        self.agent = Agent(
+            model_name,
+            toolsets=[self.mcp_server]
+        )
+
     async def chat_completion(
-        self, 
-        messages: list[Message], 
+        self,
+        messages: list[Message],
         temperature: float = 0.7,
         max_tokens: int | None = 16384,  # TODO: start using the config value
         response_model: type[BaseModel] = None,
         **kwargs
     ) -> type[BaseModel] | str:
         """Generate a chat completion with optional structured output."""
-        
-        # Convert messages to the format expected by instructor
-        formatted_messages = [
-            {"role": msg.role, "content": msg.content} 
-            for msg in messages
-        ]
-        
-        # TODO: consider allowing to equal None
-        if response_model is None:
-            class TextResponse(BaseModel):
-                content: str
-            
-            response_model = TextResponse
-        
-        structured_response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=formatted_messages,
-            response_model=response_model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
-        )
 
-        return structured_response
+        # Convert messages to conversation string for PydanticAI
+        conversation = "\n".join([
+            f"{msg.role}: {msg.content}" for msg in messages
+        ])
+
+        # Use the agent with MCP tools
+        async with self.agent:
+            if response_model is None:
+                # Return text response
+                result = await self.agent.run(conversation)
+                return result.output
+            else:
+                # Return structured response
+                result = await self.agent.run(
+                    conversation,
+                    result_type=response_model
+                )
+                return result.output
