@@ -150,47 +150,51 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
 
         {/* Simple Ingredients List */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Your Shopping List</h2>
-            {ingredients.length > 0 && (
-              <button
-                onClick={handleCopyToClipboard}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  copied
-                    ? 'bg-green-100 text-green-700 border border-green-200'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy List
-                  </>
-                )}
-              </button>
-            )}
           </div>
           
           {ingredients.length === 0 ? (
-            <p className="text-gray-500 text-center">No ingredients found.</p>
+            <p className="text-gray-500 text-center text-sm">No ingredients found.</p>
           ) : (
-            <ul className="space-y-2">
-              {ingredients.map((ingredient, index) => (
-                <li key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                  <span className="capitalize">{ingredient.name}</span>
-                  <span className="text-gray-600">{formatQuantity(ingredient.qty, ingredient.unit)}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="space-y-1">
+                {ingredients.map((ingredient, index) => (
+                  <li key={index} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-b-0">
+                    <span className="capitalize text-sm text-gray-800">{ingredient.name}</span>
+                    <span className="text-gray-600 text-sm">{formatQuantity(ingredient.qty, ingredient.unit)}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              {/* Copy Button - Prominent bottom position */}
+              <div className="flex justify-center mt-6 pt-4 border-t border-gray-100">
+                <button
+                  onClick={handleCopyToClipboard}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-base transition-all duration-200 shadow-md hover:shadow-lg ${
+                    copied
+                      ? 'bg-green-500 text-white border border-green-600'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied to Clipboard!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy Shopping List
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
           )}
         </div>
 
