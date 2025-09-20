@@ -24,6 +24,7 @@ class Nutrition(BaseModel):
 
 
 class Meal(BaseModel):
+    name: str
     description: str
     num_servings: int
     nutrition: Nutrition
