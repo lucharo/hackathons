@@ -26,8 +26,10 @@ interface MealPlanDisplayProps {
   onStartOver?: () => void;
 }
 
-export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDisplayProps) {
+export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedback, setFeedback] = useState('');
 
 
   const getMealTypeIcon = (mealType: string) => {
@@ -188,6 +190,80 @@ export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDispl
   };
 
 
+  const handleFeedbackSubmit = () => {
+    alert("This feature hasn't been implemented yet.");
+    setShowFeedbackModal(false);
+    setFeedback('');
+  };
+
+
+  const FeedbackModal = () => {
+    if (!showFeedbackModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl max-w-md w-full">
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Update Your Meal Plan</h2>
+                <p className="text-gray-600 text-sm mt-1">Tell us what you'd like to change about your meal plan</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setFeedback('');
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="feedback-textarea" className="block text-sm font-medium text-gray-700 mb-2">
+                Your feedback
+              </label>
+              <div className="relative">
+                <textarea
+                  id="feedback-textarea"
+                  key="feedback-textarea"
+                  value=""
+                  disabled
+                  placeholder="What would you like to change?"
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed resize-none opacity-60"
+                />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-gray-500 font-medium">Feature not yet implemented</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setFeedback('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFeedbackSubmit}
+                disabled={true}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg font-medium cursor-not-allowed"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -210,19 +286,22 @@ export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDispl
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
           <button
-            onClick={onStartOver}
+            onClick={() => setShowFeedbackModal(true)}
             className="px-8 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
           >
             Update this plan
           </button>
           <button className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-            Buy the ingredients
+            Buy the ingredients!
           </button>
         </div>
       </div>
 
       {/* Meal Detail Modal */}
       <MealDetailModal />
+      
+      {/* Feedback Modal */}
+      <FeedbackModal />
     </div>
   );
 }
