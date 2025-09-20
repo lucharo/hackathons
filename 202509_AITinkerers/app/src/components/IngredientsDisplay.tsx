@@ -28,11 +28,11 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
 
         // Check if Picnic integration should be enabled based on API base URL
         // Enable if localhost/127.0.0.1 (local development), disable otherwise (production)
-        const isLocalDevelopment = apiBaseUrl && (
+        const isLocalDevelopment = Boolean(apiBaseUrl && (
           apiBaseUrl.includes('localhost') ||
           apiBaseUrl.includes('127.0.0.1') ||
           apiBaseUrl.includes('0.0.0.0')
-        );
+        ));
         setPicnicEnabled(isLocalDevelopment);
 
         const response = await fetch(`${apiBaseUrl}/buy-ingredients/generate`, {
