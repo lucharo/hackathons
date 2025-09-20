@@ -47,3 +47,19 @@ async def generate_ingredient_list(request: IngredientListRequest):
     except Exception as e:
         print(f"Error generating ingredient list: {e}")
         raise
+
+
+@router.post("/buy-ingredients")
+async def buy_ingredients(request: IngredientListRequest):
+    """Buy ingredients for the meal plan."""
+    try:
+
+        client = BaseLLMClient('claude-sonnet-4-20250514')
+        messages = [Message(role='user', content='First search for pasta products on Picnic. Then try to add 2-3 different pasta products to my cart. If any fail to add, that\'s okay - just tell me which ones worked and which ones didn\'t. Also show me my current cart contents.')]
+        response = await client.chat_completion(messages)
+        print(response)
+
+        return request.ingredients
+    except Exception as e:
+        print(f"Error buying ingredients: {e}")
+        raise
