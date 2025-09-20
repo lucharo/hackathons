@@ -8,7 +8,7 @@ frontend:
 	uv run streamlit run streamlit_app.py
 
 chat:
-	uv run chainlit run chainlit_app.py -w --port 8001
+	uv run chainlit run explore/chatlit_app.py -w --port 8001
 
 mcp:
 	npx -y mcp-picnic
@@ -19,7 +19,7 @@ dev mode="normal":
 	npx -y mcp-picnic &
 	uv run uvicorn app:app --reload &
 	if [ "{{ mode }}" = "chat" ]; then
-		uv run chainlit run chainlit_app.py -w --port 8001 &
+		uv run chainlit run explore/chatlit_app.py -w --port 8001 &
 	else
 		uv run streamlit run streamlit_app.py &
 	fi
