@@ -2,11 +2,12 @@
 import os
 import logging
 from pydantic import BaseModel
-import instructor
-import openai
-import anthropic
 from pydantic_ai import Agent
 from pydantic_ai.mcp import MCPServerStdio
+from pydantic_ai.messages import (
+    ModelMessage, ModelRequest, ModelResponse,
+    SystemPromptPart, UserPromptPart, TextPart,
+)
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,19 +31,41 @@ class LLMResponse(BaseModel):
     # finish_reason: str | None = None
 
 
+class ErrorResponse(BaseModel):
+    """Error response when agent execution fails."""
+    content: str = "I encountered an issue processing your request."
+    meals: list = []
+    ingredients: list = []
+
+
+def to_pydantic_history(messages: list[Message]) -> list[ModelMessage]:
+    """Convert Message objects to PydanticAI message history."""
+    history: list[ModelMessage] = []
+    for m in messages:
+        if m.role == "system":
+            history.append(ModelRequest(parts=[SystemPromptPart(m.content)]))
+        elif m.role == "user":
+            history.append(ModelRequest(parts=[UserPromptPart(m.content)]))
+        elif m.role == "assistant":
+            history.append(ModelResponse(parts=[TextPart(m.content)]))
+    return history
+
+
 class BaseLLMClient:
     """PydanticAI-based LLM client with MCP integration."""
 
     model: str
-    openai_api_key: str
-    anthropic_api_key: str
     agent: Agent
     mcp_server: MCPServerStdio
 
     def __init__(self, model: str = None):
         self.model = model
-        self.openai_api_key = settings.openai_api_key
-        self.anthropic_api_key = settings.anthropic_api_key
+        # Ensure API keys are set in environment for PydanticAI
+        if not os.getenv("OPENAI_API_KEY") and settings.openai_api_key:
+            os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+        if not os.getenv("ANTHROPIC_API_KEY") and settings.anthropic_api_key:
+            os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+
         self._initialize_mcp_server()
         self._initialize_agent()
 
@@ -84,36 +107,60 @@ class BaseLLMClient:
 
         self.agent = Agent(
             model_name,
-            toolsets=[self.mcp_server],
-            tool_retries=1,  # Reduce retries to avoid excessive failures
-            max_tool_failures=5  # Allow some tools to fail without stopping
+            toolsets=[self.mcp_server]
         )
 
     async def chat_completion(
         self,
         messages: list[Message],
         temperature: float = 0.7,
-        max_tokens: int | None = 16384,  # TODO: start using the config value
+        max_tokens: int | None = 16384,
         response_model: type[BaseModel] = None,
         **kwargs
-    ) -> type[BaseModel] | str:
+    ) -> BaseModel | str:
         """Generate a chat completion with optional structured output."""
 
-        # Convert messages to conversation string for PydanticAI
-        conversation = "\n".join([
-            f"{msg.role}: {msg.content}" for msg in messages
-        ])
+        # Split messages: last user message becomes prompt, rest becomes history
+        prompt = messages[-1].content
+        history = to_pydantic_history(messages[:-1]) if len(messages) > 1 else None
 
         # Use the agent with MCP tools
-        async with self.agent:
-            if response_model is None:
-                # Return text response
-                result = await self.agent.run(conversation)
-                return result.output
+        try:
+            # Determine model name for agent creation
+            if self.model in OPENAI_MODELS:
+                model_name = f"openai:{self.model}"
+            elif self.model in ANTHROPIC_MODELS:
+                model_name = f"anthropic:{self.model}"
             else:
-                # Return structured response
-                result = await self.agent.run(
-                    conversation,
-                    result_type=response_model
-                )
+                raise NotImplementedError(f"Model {self.model} is not supported")
+
+            # Create agent with appropriate output type
+            agent = Agent(
+                model_name,
+                toolsets=[self.mcp_server],
+                output_type=response_model if response_model is not None else str,
+                model_settings={
+                    "temperature": temperature,
+                    "max_tokens": max_tokens
+                },
+                retries=3,  # Allow more overall retries
+                end_strategy='exhaustive'  # Continue processing even if some tools fail
+            )
+
+            async with agent:
+                result = await agent.run(prompt, message_history=history)
                 return result.output
+        except Exception as e:
+            logger.error(f"Agent execution failed: {e}")
+            # Return a graceful fallback response
+            fallback_message = f"I encountered some issues with the tools, but I can still help you. Error: {str(e)[:100]}..."
+            if response_model is None:
+                return fallback_message
+            else:
+                # Try to create an instance of the expected response model
+                try:
+                    # For most models, try to create with empty/default values
+                    return response_model()
+                except Exception:
+                    # Return a proper BaseModel error response
+                    return ErrorResponse(content=fallback_message)

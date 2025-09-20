@@ -17,6 +17,8 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
 
   useEffect(() => {
     const fetchIngredients = async () => {
@@ -135,6 +137,44 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
     }
   };
 
+  const handleAddToCart = async () => {
+    setAddingToCart(true);
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const response = await fetch(`${apiBaseUrl}/buy-ingredients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meals: meals
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Cart response:', data);
+
+      if (data.success) {
+        setCartSuccess(true);
+        setTimeout(() => {
+          setCartSuccess(false);
+        }, 3000);
+      } else {
+        throw new Error(data.message || 'Failed to add to cart');
+      }
+
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      alert('Failed to add ingredients to Picnic cart. Please try again.');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -148,9 +188,44 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
           </p>
         </div>
 
-        {/* Copy Button - Above shopping list box */}
+        {/* Action Buttons - Above shopping list box */}
         {ingredients.length > 0 && (
-          <div className="flex justify-center mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+            {/* Add to Picnic Cart Button */}
+            <button
+              onClick={handleAddToCart}
+              disabled={addingToCart}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
+                cartSuccess
+                  ? 'bg-green-500 text-white border border-green-600'
+                  : addingToCart
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-orange-600 text-white hover:bg-orange-700'
+              }`}
+            >
+              {cartSuccess ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Added to Picnic Cart!
+                </>
+              ) : addingToCart ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Adding to cart... (this may take a few minutes)
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a2 2 0 002 2h6a2 2 0 002-2v-6" />
+                  </svg>
+                  Add to Picnic Cart
+                </>
+              )}
+            </button>
+
+            {/* Copy Button */}
             <button
               onClick={handleCopyToClipboard}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
@@ -171,7 +246,7 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  Create my grocery shopping prompt
+                  Copy Shopping List
                 </>
               )}
             </button>
