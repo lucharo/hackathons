@@ -35,7 +35,7 @@ export default function GoalsScreen({ onSubmit, onBack, initialSelected }: Goals
       <div className="flex-1 max-w-2xl mx-auto px-6 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            What are your goals with HelloFresh?
+            What are your goals with DishGenius?
           </h1>
           <p className="text-lg text-gray-600 max-w-lg mx-auto">
             Let us know what's important to you.

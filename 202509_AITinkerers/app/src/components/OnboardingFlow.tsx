@@ -35,7 +35,8 @@ export default function OnboardingFlow() {
     setCurrentStep(3); // Move to loading screen
 
     try {
-      const response = await fetch('http://localhost:8000/meal-planning/generate', {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const response = await fetch(`${apiBaseUrl}/meal-planning/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
