@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
-import os
-from typing import Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from domain import (
@@ -14,7 +15,6 @@ from domain import (
     FoodPrefs,
     Goal,
     Profile,
-    Recipe,
     WeekPlan,
     aggregate_ingredients,
     collect_agent,
@@ -36,6 +36,8 @@ app = FastAPI(title="Nutrition Coach – Prototype 1")
 
 _STATE_STORE: Dict[str, CoachState] = {}
 
+ProgressCallback = Callable[[Dict[str, Any]], Awaitable[None]]
+
 
 class StageRequest(BaseModel):
     session_id: str
@@ -51,6 +53,15 @@ def get_state(session_id: str) -> CoachState:
     if session_id not in _STATE_STORE:
         _STATE_STORE[session_id] = CoachState()
     return _STATE_STORE[session_id]
+
+
+def _validate_stage_three_ready(state: CoachState) -> None:
+    if not (profile_complete(state.profile) and goal_complete(state.goal)):
+        raise HTTPException(status_code=400, detail="Profile and goal are incomplete")
+    if state.target_calories is None:
+        compute_targets(state)
+    if not prefs_complete(state.prefs):
+        raise HTTPException(status_code=400, detail="Food preferences are incomplete")
 
 
 def profile_complete(profile: Profile) -> bool:
@@ -116,6 +127,64 @@ async def run_collect_agent(user_text: str, state: CoachState):
     return output.say
 
 
+async def _run_stage_three(state: CoachState, progress_cb: ProgressCallback | None = None) -> Dict[str, Any]:
+    async def emit(event: Dict[str, Any]) -> None:
+        if progress_cb:
+            await progress_cb(event)
+
+    await emit({"type": "status", "message": "Generating personalized recipes..."})
+
+    prompt = (
+        "User profile and goal: "
+        + summarise_state(state)
+        + ". Generate the recipes now."
+    )
+    result = await recipes_agent.run(prompt)
+    output = result.output
+
+    breakfasts = output.breakfasts
+    mains = output.mains
+    await emit(
+        {
+            "type": "recipes",
+            "message": "Recipes ready.",
+            "breakfasts": [recipe.title for recipe in breakfasts],
+            "mains": [recipe.title for recipe in mains],
+        }
+    )
+
+    state.plan = WeekPlan(
+        breakfasts=breakfasts,
+        mains=mains,
+        target_calories=state.target_calories or 0,
+        tdee=state.tdee or 0,
+    )
+
+    shopping_list = aggregate_ingredients(breakfasts + mains)
+    await emit(
+        {
+            "type": "status",
+            "message": f"Preparing grocery list with {len(shopping_list)} ingredients...",
+        }
+    )
+
+    cart_url = await groceries_checkout(shopping_list, progress_cb=progress_cb)
+    state.cart_url = cart_url
+
+    response = {
+        "say": output.say or "Plan ready. Here's your grocery list and cart link.",
+        "plan": state.plan.model_dump(),
+        "shopping_list": [item.model_dump() for item in shopping_list],
+        "cart_url": cart_url,
+    }
+
+    await emit({"type": "status", "message": "Plan generation complete."})
+    if cart_url:
+        await emit({"type": "status", "message": "Cart link ready."})
+
+    return response
+
+
 @app.post("/stage/1")
 async def stage_one(request: StageRequest):
     state = get_state(request.session_id)
@@ -168,41 +237,44 @@ async def stage_two(request: StageRequest):
 @app.post("/stage/3")
 async def stage_three(request: Stage3Request):
     state = get_state(request.session_id)
-    if not (profile_complete(state.profile) and goal_complete(state.goal)):
-        raise HTTPException(status_code=400, detail="Profile and goal are incomplete")
-    if state.target_calories is None:
-        compute_targets(state)
-    if not prefs_complete(state.prefs):
-        raise HTTPException(status_code=400, detail="Food preferences are incomplete")
+    _validate_stage_three_ready(state)
+    return await _run_stage_three(state)
 
-    prompt = (
-        "User profile and goal: "
-        + summarise_state(state)
-        + ". Generate the recipes now."
-    )
-    result = await recipes_agent.run(prompt)
-    output = result.output
 
-    breakfasts = output.breakfasts
-    mains = output.mains
-    state.plan = WeekPlan(
-        breakfasts=breakfasts,
-        mains=mains,
-        target_calories=state.target_calories or 0,
-        tdee=state.tdee or 0,
-    )
+@app.post("/stage/3/stream")
+async def stage_three_stream(request: Stage3Request):
+    state = get_state(request.session_id)
+    _validate_stage_three_ready(state)
 
-    shopping_list = aggregate_ingredients(breakfasts + mains)
-    cart_url = groceries_checkout(shopping_list)
-    state.cart_url = cart_url
+    queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
 
-    response = {
-        "say": output.say or "Plan ready. Here's your grocery list and cart link.",
-        "plan": state.plan.model_dump(),
-        "shopping_list": [item.model_dump() for item in shopping_list],
-        "cart_url": cart_url,
-    }
-    return response
+    async def progress(event: Dict[str, Any]) -> None:
+        await queue.put(event)
+
+    async def worker() -> None:
+        try:
+            await queue.put({"type": "status", "message": "Starting plan generation..."})
+            payload = await _run_stage_three(state, progress)
+            await queue.put({"type": "final", "payload": payload})
+        except Exception as exc:  # noqa: BLE001
+            detail = str(exc)
+            await queue.put({"type": "error", "message": detail})
+        finally:
+            await queue.put({"type": "complete"})
+
+    worker_task = asyncio.create_task(worker())
+
+    async def event_stream():
+        try:
+            while True:
+                event = await queue.get()
+                if event.get("type") == "complete":
+                    break
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        finally:
+            await worker_task
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 
 @app.delete("/sessions/{session_id}")

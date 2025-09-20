@@ -1,7 +1,26 @@
 set shell := ["bash", "-lc"]
+set dotenv-load := true
 
-server:
-	export $(xargs < .env 2>/dev/null) && uv run uvicorn app:app --reload
+backend:
+	uv run uvicorn app:app --reload
 
-ui:
-	export $(xargs < .env 2>/dev/null) && uv run streamlit run streamlit_app.py
+frontend:
+	uv run streamlit run streamlit_app.py
+
+chat:
+	uv run chainlit run chainlit_app.py -w --port 8001
+
+mcp:
+	npx -y mcp-picnic
+
+dev mode="normal":
+	#!/usr/bin/env bash
+	trap 'kill $(jobs -p)' INT TERM EXIT
+	npx -y mcp-picnic &
+	uv run uvicorn app:app --reload &
+	if [ "{{ mode }}" = "chat" ]; then
+		uv run chainlit run chainlit_app.py -w --port 8001 &
+	else
+		uv run streamlit run streamlit_app.py &
+	fi
+	wait
