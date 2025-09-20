@@ -39,4 +39,4 @@ I'm excited about the possibilities that modern tooling open up, such as `uv` an
 
 [^1]: https://fbruzzesi.github.io/blog/2025/07/20/stop-context-switching-how-git-worktree--uv-revolutionized-my-python-workflow/
 [^2]: https://docs.claude.com/en/docs/claude-code/common-workflows#run-parallel-claude-code-sessions-with-git-worktrees
-[^3: https://x.com/kieranklaassen/status/1930032748951154966
+[^3]: https://x.com/kieranklaassen/status/1930032748951154966
