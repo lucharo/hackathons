@@ -16,3 +16,6 @@ dependencies = [
     "pydantic-ai-slim[anthropic]>=1.0.10",
     "chainlit>=1.1.0",
 ]
+
+[tool.uv.workspace]
+members = ["server"]

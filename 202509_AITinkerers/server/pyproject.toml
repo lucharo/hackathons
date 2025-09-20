@@ -1,0 +1,14 @@
+[project]
+name = "server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.68.0",
+    "fastapi>=0.116.2",
+    "instructor>=1.11.3",
+    "pydantic>=2.11.9",
+    "python-dotenv>=1.1.1",
+    "uvicorn>=0.36.0",
+]
