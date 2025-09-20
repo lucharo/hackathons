@@ -102,7 +102,7 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
   };
 
   const formatIngredientsForClipboard = () => {
-    const greeting = "Hey!\n\nPlease could you order me the following ingredients via my Picnic account:\n\n";
+    const greeting = "Hey! Please could you order me the following ingredients via my Picnic account:\n\n";
     const ingredientsList = ingredients
       .map(ingredient => `• ${ingredient.name} - ${formatQuantity(ingredient.qty, ingredient.unit)}`)
       .join('\n');
