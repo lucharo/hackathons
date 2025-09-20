@@ -22,6 +22,7 @@ from domain import (
     groceries_checkout,
     recipes_agent,
 )
+from image_service import generate_recipe_image
 
 load_dotenv()
 
@@ -144,6 +145,15 @@ async def _run_stage_three(state: CoachState, progress_cb: ProgressCallback | No
 
     breakfasts = output.breakfasts
     mains = output.mains
+
+    # Generate images for each recipe
+    for recipe in breakfasts + mains:
+        try:
+            recipe.image_url = await generate_recipe_image(recipe.title)
+        except Exception as e:
+            # If image generation fails, continue without image
+            print(f"Failed to generate image for {recipe.title}: {e}")
+
     await emit(
         {
             "type": "recipes",

@@ -182,6 +182,10 @@ if st.session_state.plan_payload:
         st.subheader(label)
         for recipe in items:
             with st.expander(recipe.get("title", "Recipe")):
+                # Display recipe image if available
+                if recipe.get("image_url"):
+                    st.image(recipe["image_url"], caption=recipe.get("title", "Recipe"), use_container_width=True)
+
                 st.markdown(f"**Servings:** {recipe.get('servings')} | **Calories/serving:** {recipe.get('calories_per_serving')}")
                 st.markdown("**Ingredients**")
                 ing_lines = [

@@ -73,6 +73,7 @@ class Recipe(BaseModel):
     calories_per_serving: int
     ingredients: List[Ingredient]
     steps: List[str]
+    image_url: Optional[str] = None
 
 
 class WeekPlan(BaseModel):
