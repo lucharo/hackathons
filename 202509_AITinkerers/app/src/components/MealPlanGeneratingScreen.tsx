@@ -23,7 +23,7 @@ export default function MealPlanGeneratingScreen() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6">
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8">
-          Our AI Agent is Generating Your Meal Plan
+          DishGenius is Generating Your Meal Plan
         </h1>
         
         <div className="mb-8 flex justify-center">

@@ -1,0 +1,80 @@
+{
+    "meals": [
+        {
+            "name": "Quick Protein-Packed Smoothie Bowl",
+            "description": "A fast and nutritious breakfast bowl with plant-based protein powder, mixed berries, spinach, and topped with nuts and seeds. Ready in 5 minutes.",
+            "num_servings": 2,
+            "nutrition": {
+                "calories": 320,
+                "grams_protein": 18.0,
+                "grams_carbs": 25.0,
+                "grams_fat": 12.0
+            },
+            "meal_type": "breakfast",
+            "diet_type": "vegan",
+            "allergens": [
+                "nuts"
+            ]
+        },
+        {
+            "name": "Overnight Chia Protein Pudding",
+            "description": "Make-ahead breakfast with chia seeds, plant-based milk, protein powder, and fresh fruit. Prep the night before for a quick morning meal.",
+            "num_servings": 3,
+            "nutrition": {
+                "calories": 280,
+                "grams_protein": 15.0,
+                "grams_carbs": 22.0,
+                "grams_fat": 14.0
+            },
+            "meal_type": "breakfast",
+            "diet_type": "vegan",
+            "allergens": []
+        },
+        {
+            "name": "Quick Lentil and Vegetable Curry",
+            "description": "A fast 20-minute curry with red lentils, mixed vegetables, coconut milk, and spices. High in protein and flavor.",
+            "num_servings": 3,
+            "nutrition": {
+                "calories": 380,
+                "grams_protein": 16.0,
+                "grams_carbs": 45.0,
+                "grams_fat": 15.0
+            },
+            "meal_type": "lunch/dinner",
+            "diet_type": "vegan",
+            "allergens": []
+        },
+        {
+            "name": "Chickpea and Quinoa Power Bowl",
+            "description": "A protein-rich bowl with roasted chickpeas, quinoa, mixed greens, avocado, and tahini dressing. Ready in 15 minutes using pre-cooked quinoa.",
+            "num_servings": 4,
+            "nutrition": {
+                "calories": 420,
+                "grams_protein": 18.0,
+                "grams_carbs": 52.0,
+                "grams_fat": 16.0
+            },
+            "meal_type": "lunch/dinner",
+            "diet_type": "vegan",
+            "allergens": [
+                "sesame"
+            ]
+        },
+        {
+            "name": "Black Bean and Tofu Stir-Fry",
+            "description": "Quick 15-minute stir-fry with firm tofu, black beans, bell peppers, and broccoli in a savory sauce. High protein and low sugar.",
+            "num_servings": 3,
+            "nutrition": {
+                "calories": 350,
+                "grams_protein": 20.0,
+                "grams_carbs": 35.0,
+                "grams_fat": 14.0
+            },
+            "meal_type": "lunch/dinner",
+            "diet_type": "vegan",
+            "allergens": [
+                "soy"
+            ]
+        }
+    ]
+}

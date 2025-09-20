@@ -8,6 +8,7 @@ class DietaryType(str, Enum):
     PESCATARIAN = "pescatarian"
     GLUTEN_FREE = "gluten_free"
     HALAL = "halal"
+    NONE = "none"
 
 
 class MealType(str, Enum):
