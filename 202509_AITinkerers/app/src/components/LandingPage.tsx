@@ -16,7 +16,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
               <img 
                 src="/dish-genius.png" 
                 alt="Dish Genius Logo" 
-                className="h-32 w-auto drop-shadow-lg"
+                className="h-48 md:h-56 w-auto drop-shadow-lg"
               />
             </div>
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
