@@ -11,7 +11,11 @@ export interface OnboardingData {
   goals: string[];
 }
 
-export default function OnboardingFlow() {
+interface OnboardingFlowProps {
+  onBackToLanding?: () => void;
+}
+
+export default function OnboardingFlow({ onBackToLanding }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     mealTypes: [],
@@ -112,6 +116,7 @@ export default function OnboardingFlow() {
       {currentStep === 0 && (
         <MealTypeScreen 
           onSubmit={handleMealTypesSubmit}
+          onBack={onBackToLanding}
           initialSelected={onboardingData.mealTypes}
         />
       )}

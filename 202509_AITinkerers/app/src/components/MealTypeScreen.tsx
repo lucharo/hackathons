@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 interface MealTypeScreenProps {
   onSubmit: (selectedTypes: string[]) => void;
+  onBack?: () => void;
   initialSelected: string[];
 }
 
@@ -16,7 +17,7 @@ const mealTypes = [
   'Protein Rich'
 ];
 
-export default function MealTypeScreen({ onSubmit, initialSelected }: MealTypeScreenProps) {
+export default function MealTypeScreen({ onSubmit, onBack, initialSelected }: MealTypeScreenProps) {
   const [selectedTypes, setSelectedTypes] = useState<string[]>(initialSelected);
 
   const toggleMealType = (type: string) => {
@@ -59,10 +60,18 @@ export default function MealTypeScreen({ onSubmit, initialSelected }: MealTypeSc
           ))}
         </div>
 
-        <div className="text-center">
+        <div className="flex justify-between items-center">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="bg-gray-200 text-gray-700 px-8 py-4 rounded-xl text-lg font-medium hover:bg-gray-300 transition-colors duration-200"
+            >
+              ← Back
+            </button>
+          )}
           <button
             onClick={handleContinue}
-            className="bg-gray-900 text-white px-12 py-4 rounded-xl text-lg font-medium hover:bg-gray-800 transition-colors duration-200 min-w-[200px]"
+            className={`bg-gray-900 text-white px-12 py-4 rounded-xl text-lg font-medium hover:bg-gray-800 transition-colors duration-200 min-w-[200px] ${!onBack ? 'mx-auto' : 'ml-auto'}`}
           >
             Continue
           </button>
