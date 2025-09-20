@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from models.meal_planning import MealPlan
+from llm.client import BaseLLMClient, Message
 
 router = APIRouter(prefix="/meal-planning", tags=["meal-planning"])
 
@@ -20,37 +21,24 @@ async def generate_meal_plan(request: MealPlanRequest):
     # For now, return a mock response
     from models.meal_planning import Meal, MealType, DietaryType, Nutrition
 
-    mock_meals = []
+    generate_meal_plan_prompt = f"""
+    A user wants to generate a meal plan based on the following preferences:
+    Meal types: {request.meal_types}
+    Dietary preferences: {request.dietary_preferences}
+    Goals: {request.goals}
 
-    # Generate mock meals based on selected meal types
-    if "breakfast" in request.meal_types:
-        mock_meals.append(Meal(
-            description="Overnight oats with fresh berries and almonds",
-            num_servings=1,
-            nutrition=Nutrition(calories=350, grams_protein=12.0, grams_carbs=45.0, grams_fat=15.0),
-            meal_type=MealType.BREAKFAST,
-            diet_type=DietaryType.VEGETARIAN if "vegetarian" in request.dietary_preferences else DietaryType.GLUTEN_FREE,
-            allergens=["nuts"] if "nuts" not in request.dietary_preferences else []
-        ))
+    Please return the meal plan in the following format:
+    {MealPlan.model_json_schema()}
+    """
 
-    if "lunch" in request.meal_types:
-        mock_meals.append(Meal(
-            description="Quinoa bowl with roasted vegetables and tahini dressing",
-            num_servings=1,
-            nutrition=Nutrition(calories=420, grams_protein=15.0, grams_carbs=55.0, grams_fat=18.0),
-            meal_type=MealType.LUNCH,
-            diet_type=DietaryType.VEGAN if "vegan" in request.dietary_preferences else DietaryType.VEGETARIAN,
-            allergens=["sesame"]
-        ))
+    llm_client = BaseLLMClient(model="claude-sonnet-4-20250514")
 
-    if "dinner" in request.meal_types:
-        mock_meals.append(Meal(
-            description="Grilled salmon with sweet potato and steamed broccoli",
-            num_servings=1,
-            nutrition=Nutrition(calories=480, grams_protein=32.0, grams_carbs=35.0, grams_fat=22.0),
-            meal_type=MealType.DINNER,
-            diet_type=DietaryType.PESCATARIAN if "pescatarian" in request.dietary_preferences else DietaryType.GLUTEN_FREE,
-            allergens=["fish"]
-        ))
+    generated_plan = await llm_client.chat_completion(
+        messages=[
+            Message(role="system", content="You are a helpful assistant that generates personalized meal plans."),
+            Message(role="user", content=generate_meal_plan_prompt)
+        ],
+        response_model=MealPlan
+    )
 
-    return MealPlan(meals=mock_meals)
+    return MealPlan(meals=generated_plan.meals)
