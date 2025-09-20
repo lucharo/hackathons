@@ -38,8 +38,10 @@ async def start_chat() -> None:
     cl.user_session.set("session_id", session_id)
     cl.user_session.set("next_stage", 1)
     await cl.Message(
-        "Hi! Share your profile first, then your food preferences. "
-        "Type 'generate plan' when you're ready for recipes."
+        "Hey there! I'm your nutrition co-pilot. Start by sharing a quick profile – "
+        "age, height, weight, activity level, and whether you want to lose or gain.\n"
+        "Once that's in, tell me at least two breakfasts, three mains, and any hard no's.\n"
+        "When you're ready, say something like 'generate plan' and I'll prep recipes + a cart link."
     ).send()
 
 

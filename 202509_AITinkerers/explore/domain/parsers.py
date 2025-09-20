@@ -28,7 +28,7 @@ def update_profile_from_text(state: CoachState, message: str) -> str:
     elif "male" in lower:
         state.profile.sex = "male"
 
-    age = _extract_number(r"(\d{2})\s*(?:years?|yo|yr)", lower)
+    age = _extract_number(r"(\d{2})\s*(?:-?year(?:s)?-?old|years?|yo|yr)", lower)
     if age is not None:
         state.profile.age = int(age)
 
@@ -78,8 +78,13 @@ def update_profile_from_text(state: CoachState, message: str) -> str:
         missing.append("goal (lose/gain weight)")
 
     if missing:
-        needed = ", ".join(missing)
-        return f"Thanks! I still need: {needed}."
+        needed = "\n - ".join(missing)
+        return (
+            "Thanks for the details so far! I still need a few things before we lock in "
+            "your profile:\n"
+            f" - {needed}\n"
+            "Example: 'I'm a 34-year-old male, 182 cm, 82 kg, moderately active and want to lose weight.'"
+        )
 
     try:
         compute_targets(state)
@@ -89,10 +94,21 @@ def update_profile_from_text(state: CoachState, message: str) -> str:
     tdee = state.tdee or 2000
     target = state.target_calories or (tdee - 400 if state.goal.direction == "loss" else tdee + 400)
 
+    profile_bits = [
+        f"Age: {state.profile.age}",
+        f"Height: {state.profile.height_cm} cm",
+        f"Weight: {state.profile.weight_kg} kg",
+        f"Activity: {state.profile.activity}",
+        f"Goal: {state.goal.direction} ({state.goal.rate_category})",
+    ]
+
+    summary_lines = "\n - ".join(bit for bit in profile_bits if bit)
+
     return (
-        f"Great. Maintenance is about {tdee} kcal/day. "
-        f"Target is roughly {target} kcal/day. "
-        "Tell me two breakfasts and three lunch or dinner ideas you enjoy."
+        "Awesome – I've got your baseline locked in! Here's what I heard:\n"
+        f" - {summary_lines}\n"
+        f"Maintenance calories land around {tdee} kcal/day, and we'll aim for about {target} kcal/day.\n"
+        "Next, list two go-to breakfasts plus three lunch or dinner ideas (and mention dislikes or allergies)."
     )
 
 
@@ -130,11 +146,23 @@ def update_prefs_from_text(state: CoachState, message: str) -> str:
 
     if len(state.prefs.breakfasts_like) < 2 or len(state.prefs.mains_like) < 3:
         return (
-            "Great start! Please list at least two breakfasts and three mains you enjoy, "
-            "plus any dislikes with 'no ...' statements."
+            "Great start! Jot down at least two breakfasts and three mains you truly enjoy. "
+            "Feel free to add lines like 'no peanuts' or 'allergy: dairy' so I can avoid them."
         )
 
-    return "Awesome, I have your preferences. Ready to build this week's plan and shopping list?"
+    breakfasts = ", ".join(state.prefs.breakfasts_like[:2]) or "(none yet)"
+    mains = ", ".join(state.prefs.mains_like[:3]) or "(none yet)"
+    dislikes = ", ".join(state.prefs.dislikes) or "(none)"
+    allergies = ", ".join(state.prefs.allergies) or "(none)"
+
+    return (
+        "Perfect, preferences saved! Here's the snapshot:\n"
+        f" - Breakfast faves: {breakfasts}\n"
+        f" - Main meal go-tos: {mains}\n"
+        f" - Dislikes: {dislikes}\n"
+        f" - Allergies: {allergies}\n"
+        "Ready for me to assemble the weekly plan and shopping list?"
+    )
 
 
 __all__ = [

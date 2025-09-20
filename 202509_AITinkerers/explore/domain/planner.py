@@ -57,8 +57,11 @@ def generate_week_plan(state: CoachState) -> Tuple[WeekPlan, List[Ingredient], s
     )
 
     say = (
-        "Here's your weekly plan. Aim for balanced meals and prep ahead where possible. "
-        f"Daily calories target: {target}."
+        "Your weekly plan is ready! Here's the game plan:\n"
+        f" - Daily target: {target} kcal (maintenance ~{tdee} kcal).\n"
+        f" - Breakfast rotation: {', '.join(recipe.title for recipe in breakfast_recipes)}.\n"
+        f" - Mains lineup: {', '.join(recipe.title for recipe in main_recipes)}.\n"
+        "I'll also include a consolidated shopping list and a quick cart link so you can check out in one go."
     )
 
     return plan, shopping_list, say

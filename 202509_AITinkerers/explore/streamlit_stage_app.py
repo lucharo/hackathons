@@ -19,8 +19,14 @@ API_TIMEOUT = float(os.environ.get("API_TIMEOUT", "60"))
 API_CONNECT_TIMEOUT = float(os.environ.get("API_CONNECT_TIMEOUT", "10"))
 API_WRITE_TIMEOUT = float(os.environ.get("API_WRITE_TIMEOUT", "30"))
 
-DEFAULT_STAGE1 = "Share age, height, weight, activity level, and your goal."
-DEFAULT_STAGE2 = "List breakfast and main dishes you enjoy plus any allergies."
+DEFAULT_STAGE1 = (
+    "I'm a 34-year-old male, 182 cm, 82 kg, moderately active, aiming to lose weight fast."
+)
+DEFAULT_STAGE2 = (
+    "Breakfasts: overnight oats, tofu scramble.\n"
+    "Mains: chickpea curry, lentil tacos, veggie stir fry.\n"
+    "No peanuts; allergy: dairy"
+)
 
 
 @st.cache_resource(show_spinner=False)
@@ -87,6 +93,7 @@ def render_stage(stage: str, label: str, default_text: str) -> None:
             st.error(f"Network error while contacting {API_BASE}: {exc}")
             return
         st.session_state.log.append((stage, text.strip(), data.get("say", "")))
+        st.success("Stage saved! Scroll down to view the running conversation.")
 
 
 def render_stage_three() -> None:
@@ -107,6 +114,7 @@ def render_stage_three() -> None:
             st.json(shopping)
         if cart := data.get("cart_url"):
             st.markdown(f"[Open cart]({cart})")
+        st.success("Weekly plan ready – details logged below.")
 
 
 def main() -> None:
