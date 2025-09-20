@@ -28,11 +28,38 @@ export default function OnboardingFlow() {
     setCurrentStep(2);
   };
 
-  const handleGoalsSubmit = (selectedGoals: string[]) => {
+  const handleGoalsSubmit = async (selectedGoals: string[]) => {
+    const finalData = { ...onboardingData, goals: selectedGoals };
     setOnboardingData(prev => ({ ...prev, goals: selectedGoals }));
-    // TODO: Send data to backend and proceed to main app
-    console.log('Onboarding complete:', { ...onboardingData, goals: selectedGoals });
+
     setCurrentStep(3); // Move to loading screen
+
+    try {
+      const response = await fetch('http://localhost:8000/meal-planning/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meal_types: finalData.mealTypes,
+          dietary_preferences: finalData.dietaryPreferences,
+          goals: finalData.goals
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const mealPlan = await response.json();
+      console.log('Generated meal plan:', mealPlan);
+
+      // TODO: Handle successful meal plan generation (e.g., navigate to meal plan view)
+
+    } catch (error) {
+      console.error('Error generating meal plan:', error);
+      // TODO: Handle error state (e.g., show error message to user)
+    }
   };
 
   const handleBack = () => {
