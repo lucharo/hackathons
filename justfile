@@ -21,6 +21,14 @@ create-worktree branch path:
 close-worktree path:
     git worktree remove {{path}}
 
+# Push branch to remote (keeps worktree open)
+push branch:
+    #!/usr/bin/env bash
+    cd ../worktrees/{{branch}}
+    git push -u origin {{branch}}
+    echo "Pushed branch {{branch}} to remote"
+    cd - > /dev/null
+
 # Push branch and create PR, then close worktree
 push-and-close branch:
     #!/usr/bin/env bash
