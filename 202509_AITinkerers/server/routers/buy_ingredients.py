@@ -1,15 +1,22 @@
 """Buy ingredients API endpoints."""
 from fastapi import APIRouter
+from pydantic import BaseModel
 from models.meal_planning import Meal, IngredientList
 from llm.client import BaseLLMClient, Message
 
 router = APIRouter(prefix="/buy-ingredients", tags=["buy-ingredients"])
 
-async def generate_ingredient_list_from_meals(meals: list[Meal]):
-    """Generate a personalized meal plan based on user preferences."""
+
+class IngredientListRequest(BaseModel):
+    meals: list[Meal]
+
+
+@router.post("/generate", response_model=IngredientList)
+async def generate_ingredient_list(request: IngredientListRequest):
+    """Generate an ingredient list from the provided meals."""
     try:
         # Format meals for better readability
-        meals_json = "\n".join([meal.model_dump_json() for meal in meals])
+        meals_json = "\n".join([meal.model_dump_json() for meal in request.meals])
         
         parse_ingredient_list_prompt = f"""Given the following meals, help me parse out a list of ingredients for all the meals so I can generate a shopping list to cook all the meals.
 
@@ -35,7 +42,7 @@ async def generate_ingredient_list_from_meals(meals: list[Meal]):
             response_model=IngredientList
         )
 
-        return generated_ingredient_list.ingredients
+        return generated_ingredient_list
     
     except Exception as e:
         print(f"Error generating ingredient list: {e}")
