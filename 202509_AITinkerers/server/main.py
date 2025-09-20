@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import meal_planning, mcp
+from routers import meal_planning, buy_ingredients
 
 app = FastAPI(
     title="Meal Coach API", 
@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(meal_planning.router)
-app.include_router(mcp.router)
+app.include_router(buy_ingredients.router)
 
 @app.get("/")
 async def root():
@@ -27,7 +27,7 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "meal_planning": "/meal-planning",
-            "mcp": "/mcp",
+            "buy_ingredients": "/buy-ingredients",
             "health": "/health",
             "docs": "/docs"
         }
@@ -40,6 +40,6 @@ async def health_check():
         "service": "meal-coach-api",
         "components": {
             "meal_planning": "available",
-            "mcp": "available"
+            "buy_ingredients": "available"
         }
     }

@@ -1,9 +1,9 @@
-"""MCP (Model Context Protocol) server API endpoints."""
+"""Buy ingredients API endpoints."""
 from fastapi import APIRouter
 from models.meal_planning import Meal, IngredientList
 from llm.client import BaseLLMClient, Message
 
-router = APIRouter(prefix="/mcp", tags=["mcp"])
+router = APIRouter(prefix="/buy-ingredients", tags=["buy-ingredients"])
 
 async def generate_ingredient_list_from_meals(meals: list[Meal]):
     """Generate a personalized meal plan based on user preferences."""
