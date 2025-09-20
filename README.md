@@ -37,6 +37,34 @@ uv tool upgrade --all
 
 I'm excited about the possibilities that modern tooling open up, such as `uv` and `claude code`. Apparently `git worktree` can help loads with that too. [^1][^2][^3]
 
+### Git Worktree Workflow
+
+Use the included `justfile` to manage worktrees:
+
+```bash
+# Create a new worktree for feature work
+just create-worktree feature-branch ../feature-work
+
+# Work in the worktree
+cd ../feature-work
+# ... make changes, commit ...
+
+# Option 1: Create PR workflow (recommended)
+git push origin feature-branch
+# Create PR via GitHub/GitLab UI or CLI
+just close-worktree ../feature-work
+# After PR is merged, cleanup:
+git branch -d feature-branch
+
+# Option 2: Direct merge workflow
+# Switch to main (in main worktree)
+git checkout main
+git merge feature-branch
+just close-worktree ../feature-work
+```
+
+The worktree only removes the working directory - your branch and commits remain in the repo until explicitly deleted.
+
 [^1]: https://fbruzzesi.github.io/blog/2025/07/20/stop-context-switching-how-git-worktree--uv-revolutionized-my-python-workflow/
 [^2]: https://docs.claude.com/en/docs/claude-code/common-workflows#run-parallel-claude-code-sessions-with-git-worktrees
 [^3]: https://x.com/kieranklaassen/status/1930032748951154966
