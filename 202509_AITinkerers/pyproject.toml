@@ -8,4 +8,5 @@ dependencies = [
     "elevenlabs>=2.16.0",
     "mirascope>=1.25.6",
     "pydantic-ai>=1.0.10",
+    "fastapi>=0.115.0",
 ]
