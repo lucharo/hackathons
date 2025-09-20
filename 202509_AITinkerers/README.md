@@ -6,10 +6,13 @@ Minimal instructions to run the staged FastAPI backend and the Streamlit client.
 - Python environment managed by `uv` (already configured in this repo).
 - `ANTHROPIC_API_KEY` exported for Claude 4 Sonnet.
 - Optional: `ELEVENLABS_API_KEY` if you plan to send audio (`audio_base64`) to the backend.
+- For Sainsbury's ordering: `SAINSBURY_USERNAME` and `SAINSBURY_PASSWORD` environment variables.
 
 ## Start the FastAPI Backend
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+export SAINSBURY_USERNAME=your_email@example.com
+export SAINSBURY_PASSWORD=your_password
 uv run uvicorn app:app --reload
 ```
 The backend also loads environment variables from a local `.env` file if present (thanks to `python-dotenv`).
