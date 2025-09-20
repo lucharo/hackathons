@@ -4,6 +4,7 @@ import DietaryPreferencesScreen from './DietaryPreferencesScreen';
 import GoalsScreen from './GoalsScreen';
 import MealPlanGeneratingScreen from './MealPlanGeneratingScreen';
 import MealPlanDisplay, { type MealPlan } from './MealPlanDisplay';
+import exampleMealPlan from '../example.json';
 
 export interface OnboardingData {
   mealTypes: string[];
@@ -36,6 +37,30 @@ export default function OnboardingFlow() {
 
     setCurrentStep(3); // Move to loading screen
 
+    // // Simulate API delay for development with example data
+    // try {
+    //   console.log('Using example meal plan data for development');
+    //   console.log('User preferences:', {
+    //     meal_types: finalData.mealTypes,
+    //     dietary_preferences: finalData.dietaryPreferences,
+    //     goals: finalData.goals
+    //   });
+      
+    //   // Simulate API delay
+    //   await new Promise(resolve => setTimeout(resolve, 2000));
+      
+    //   // Use example meal plan data
+    //   const mealPlan = exampleMealPlan as MealPlan;
+    //   console.log('Loaded example meal plan:', mealPlan);
+      
+    //   setGeneratedMealPlan(mealPlan);
+    //   setCurrentStep(4); // Move to meal plan display
+
+    // } catch (error) {
+    //   console.error('Error loading example meal plan:', error);
+    //   // TODO: Handle error state (e.g., show error message to user)
+    // }
+
     try {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       const response = await fetch(`${apiBaseUrl}/meal-planning/generate`, {
@@ -64,6 +89,7 @@ export default function OnboardingFlow() {
       console.error('Error generating meal plan:', error);
       // TODO: Handle error state (e.g., show error message to user)
     }
+
   };
 
   const handleBack = () => {

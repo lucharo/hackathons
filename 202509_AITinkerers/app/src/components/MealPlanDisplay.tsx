@@ -29,8 +29,6 @@ interface MealPlanDisplayProps {
 export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDisplayProps) {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
 
-  const breakfastMeals = mealPlan.meals.filter(meal => meal.meal_type === 'breakfast');
-  const lunchDinnerMeals = mealPlan.meals.filter(meal => meal.meal_type === 'lunch/dinner');
 
   const getMealTypeIcon = (mealType: string) => {
     return mealType === 'breakfast' ? '🌅' : '🍽️';
@@ -189,10 +187,6 @@ export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDispl
     );
   };
 
-  const totalCalories = mealPlan.meals.reduce((sum, meal) => sum + meal.nutrition.calories, 0);
-  const totalProtein = mealPlan.meals.reduce((sum, meal) => sum + meal.nutrition.grams_protein, 0);
-  const totalCarbs = mealPlan.meals.reduce((sum, meal) => sum + meal.nutrition.grams_carbs, 0);
-  const totalFat = mealPlan.meals.reduce((sum, meal) => sum + meal.nutrition.grams_fat, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -203,55 +197,15 @@ export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDispl
           <p className="text-gray-600">Here are your customized meals based on your preferences</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-blue-600">{totalCalories}</div>
-            <div className="text-sm text-gray-600">Total Calories</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-green-600">{Math.round(totalProtein)}g</div>
-            <div className="text-sm text-gray-600">Protein</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-yellow-600">{Math.round(totalCarbs)}g</div>
-            <div className="text-sm text-gray-600">Carbs</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-purple-600">{Math.round(totalFat)}g</div>
-            <div className="text-sm text-gray-600">Fat</div>
+
+        {/* All Meals Section */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {mealPlan.meals.map((meal, index) => (
+              <MealCard key={`meal-${index}`} meal={meal} />
+            ))}
           </div>
         </div>
-
-        {/* Breakfast Section */}
-        {breakfastMeals.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span>🌅</span>
-              Breakfast Options
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {breakfastMeals.map((meal, index) => (
-                <MealCard key={`breakfast-${index}`} meal={meal} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Lunch/Dinner Section */}
-        {lunchDinnerMeals.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span>🍽️</span>
-              Lunch & Dinner Options
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {lunchDinnerMeals.map((meal, index) => (
-                <MealCard key={`lunch-dinner-${index}`} meal={meal} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
@@ -259,13 +213,10 @@ export default function MealPlanDisplay({ mealPlan, onStartOver }: MealPlanDispl
             onClick={onStartOver}
             className="px-8 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
           >
-            Create New Plan
+            Update this plan
           </button>
           <button className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-            Save Meal Plan
-          </button>
-          <button className="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors">
-            Generate Shopping List
+            Buy the ingredients
           </button>
         </div>
       </div>
