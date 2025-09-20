@@ -1,5 +1,6 @@
 # from abc import ABC, abstractmethod
 import os
+import logging
 from pydantic import BaseModel
 import instructor
 import openai
@@ -7,6 +8,8 @@ import anthropic
 from pydantic_ai import Agent
 from pydantic_ai.mcp import MCPServerStdio
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 OPENAI_MODELS = ["gpt-4.1-2025-04-14"]
@@ -45,11 +48,22 @@ class BaseLLMClient:
 
     def _initialize_mcp_server(self):
         """Initialize the MCP server for Picnic integration."""
+        # Get Picnic credentials from environment
+        picnic_username = os.getenv("PICNIC_USERNAME")
+        picnic_password = os.getenv("PICNIC_PASSWORD")
+
+        # Check that credentials are available and not empty
+        if not picnic_username or not picnic_password:
+            logger.error("PICNIC_USERNAME or PICNIC_PASSWORD environment variables are missing or empty")
+            raise ValueError("Picnic credentials are required but not found in environment variables")
+
+        logger.info("Environment variables successfully checked - PICNIC credentials are present and non-empty")
+
         # Create environment dict with current env plus Picnic credentials
         env = os.environ.copy()
         env.update({
-            "PICNIC_USERNAME": os.getenv("PICNIC_USERNAME"),
-            "PICNIC_PASSWORD": os.getenv("PICNIC_PASSWORD")
+            "PICNIC_USERNAME": picnic_username,
+            "PICNIC_PASSWORD": picnic_password
         })
 
         self.mcp_server = MCPServerStdio(
@@ -70,7 +84,9 @@ class BaseLLMClient:
 
         self.agent = Agent(
             model_name,
-            toolsets=[self.mcp_server]
+            toolsets=[self.mcp_server],
+            tool_retries=1,  # Reduce retries to avoid excessive failures
+            max_tool_failures=5  # Allow some tools to fail without stopping
         )
 
     async def chat_completion(
