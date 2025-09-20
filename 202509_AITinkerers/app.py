@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 from typing import Dict, Optional
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -20,6 +22,8 @@ from domain import (
     groceries_checkout,
     recipes_agent,
 )
+
+load_dotenv()
 
 try:
     from elevenlabs.client import ElevenLabs

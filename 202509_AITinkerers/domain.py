@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import os
 from collections import defaultdict
 from typing import Dict, List, Literal, Optional
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
+
+load_dotenv()
+
+DEFAULT_MODEL = "anthropic:claude-sonnet-4-20250514"
+BASE_MODEL = os.environ.get("BASE_MODEL", DEFAULT_MODEL)
 
 Activity = Literal["sedentary", "light", "moderate", "very", "extreme"]
 Direction = Literal["loss", "gain"]
@@ -132,7 +139,7 @@ class CollectOut(BaseModel):
 
 
 collect_agent = Agent(
-    "anthropic:claude-4-sonnet",
+    BASE_MODEL,
     system_prompt=(
         "You are a concise nutrition intake assistant.\n"
         "Update only the profile, goal, and food preference fields you can infer from the latest reply.\n"
@@ -151,7 +158,7 @@ class RecipesOut(BaseModel):
 
 
 recipes_agent = Agent(
-    "anthropic:claude-4-sonnet",
+    BASE_MODEL,
     system_prompt=(
         "Generate exactly two breakfast recipes and three lunch/dinner recipes.\n"
         "Each Recipe must include servings, calories_per_serving, ingredients with numeric qty + unit, and clear steps.\n"

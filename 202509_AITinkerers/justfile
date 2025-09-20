@@ -1,0 +1,7 @@
+set shell := ["bash", "-lc"]
+
+server:
+	export $(xargs < .env 2>/dev/null) && uv run uvicorn app:app --reload
+
+ui:
+	export $(xargs < .env 2>/dev/null) && uv run streamlit run streamlit_app.py
