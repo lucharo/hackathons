@@ -23,6 +23,14 @@ class Nutrition(BaseModel):
     grams_fat: float
 
 
+class Ingredient(BaseModel):
+    name: str
+    qty: float
+    unit: str
+
+class IngredientList(BaseModel):
+    ingredients: list[Ingredient]
+
 class Meal(BaseModel):
     name: str
     description: str
@@ -31,7 +39,6 @@ class Meal(BaseModel):
     meal_type: MealType
     diet_type: DietaryType
     allergens: list[str]
-
 
 class MealPlan(BaseModel):
     meals: list[Meal]

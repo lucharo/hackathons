@@ -2,15 +2,33 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import math
 import os
+import shlex
 from collections import defaultdict
-from typing import Dict, List, Literal, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+try:
+    from mcp.client import stdio as mcp_stdio
+    from mcp.client.stdio import StdioServerParameters
+    from mcp.client.session import ClientSession as MCPClientSession
+
+    _MCP_AVAILABLE = True
+except Exception:  # noqa: BLE001 - optional dependency
+    mcp_stdio = None  # type: ignore[assignment]
+    MCPClientSession = None  # type: ignore[assignment]
+    StdioServerParameters = None  # type: ignore[assignment]
+    _MCP_AVAILABLE = False
 
 DEFAULT_MODEL = "anthropic:claude-sonnet-4-20250514"
 BASE_MODEL = os.environ.get("BASE_MODEL", DEFAULT_MODEL)
@@ -182,10 +200,280 @@ def aggregate_ingredients(recipes: List[Recipe]) -> List[Ingredient]:
     ]
 
 
-def groceries_checkout(ingredients: List[Ingredient]) -> str:
-    """Placeholder for an MCP-backed grocery checkout call."""
+def _extract_json_payload(result: Any) -> Dict[str, Any] | List[Any] | None:
+    """Extract JSON content from an MCP tool response."""
 
-    return "https://example.com/demo-cart"
+    if getattr(result, "structuredContent", None):
+        return result.structuredContent
+
+    for entry in getattr(result, "content", []) or []:
+        text = getattr(entry, "text", "")
+        if not text:
+            continue
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _infer_cart_quantity(ingredient: Ingredient) -> int:
+    unit = (ingredient.unit or "").lower()
+    qty = ingredient.qty or 1
+    if unit in {"count", "counts", "pc", "pcs", "piece", "pieces", "item", "items"}:
+        return max(1, int(math.ceil(qty)))
+    if unit in {"pack", "packs", "package", "packages", "bag", "bags", "bottle", "bottles", "jar", "jars"}:
+        return max(1, int(math.ceil(qty)))
+    if qty >= 1:
+        return int(math.ceil(qty))
+    return 1
+
+
+def _should_clear_cart() -> bool:
+    return os.getenv("PICNIC_CLEAR_CART", "false").lower() in {"1", "true", "yes", "on"}
+
+
+def _picnic_env(username: str, password: str) -> Dict[str, str]:
+    env = {
+        "PICNIC_USERNAME": username,
+        "PICNIC_PASSWORD": password,
+    }
+    for name in ("PICNIC_COUNTRY_CODE", "PICNIC_API_VERSION", "HTTP_PROXY", "HTTPS_PROXY"):
+        value = os.getenv(name)
+        if value:
+            env[name] = value
+    return env
+
+
+def _format_search_query(ingredient: Ingredient) -> str:
+    base = ingredient.name.strip()
+    unit = ingredient.unit.strip() if ingredient.unit else ""
+    if unit:
+        return f"{base} {unit}"
+    return base
+
+
+def _pick_product(results: List[Dict[str, Any]], ingredient: Ingredient) -> Dict[str, Any] | None:
+    target = ingredient.name.lower()
+    for candidate in results:
+        name = str(candidate.get("name", "")).lower()
+        if name == target:
+            return candidate
+    return results[0] if results else None
+
+
+def _derive_cart_url(cart_payload: Dict[str, Any] | None) -> str:
+    base_url = os.getenv("PICNIC_CART_URL", "https://app.picnic.app/cart")
+    if not isinstance(cart_payload, dict):
+        return base_url
+    cart_id = cart_payload.get("id") or cart_payload.get("cart_id")
+    if cart_id:
+        return f"{base_url}?cartId={cart_id}"
+    return base_url
+
+
+ProgressReporter = Callable[[Dict[str, Any]], Awaitable[None]]
+
+
+async def _emit(progress_cb: ProgressReporter | None, event: Dict[str, Any]) -> None:
+    if progress_cb is None:
+        return
+    await progress_cb(event)
+
+
+async def _checkout_via_mcp(
+    ingredients: List[Ingredient],
+    username: str,
+    password: str,
+    progress_cb: ProgressReporter | None = None,
+) -> str:
+    if not _MCP_AVAILABLE or not mcp_stdio or not MCPClientSession or not StdioServerParameters:
+        raise RuntimeError("MCP Picnic client is unavailable")
+
+    args_env = os.getenv("PICNIC_MCP_ARGS", "-y mcp-picnic")
+    arg_list = shlex.split(args_env) if args_env else []
+    if not arg_list:
+        arg_list = ["-y", "mcp-picnic"]
+
+    params = StdioServerParameters(
+        command=os.getenv("PICNIC_MCP_COMMAND", "npx"),
+        args=arg_list,
+        env=_picnic_env(username, password),
+    )
+
+    successful: List[Dict[str, Any]] = []
+    failures: List[Dict[str, Any]] = []
+
+    await _emit(progress_cb, {"type": "tool", "tool": "mcp_session", "phase": "start"})
+
+    async with mcp_stdio.stdio_client(params) as (read_stream, write_stream):
+        session = MCPClientSession(read_stream, write_stream)
+        await session.initialize()
+        await session.list_tools()
+
+        await _emit(progress_cb, {"type": "tool", "tool": "mcp_session", "phase": "ready"})
+
+        if _should_clear_cart():
+            await session.call_tool("picnic_clear_cart", {})
+
+        for ingredient in ingredients:
+            query = _format_search_query(ingredient)
+            await _emit(
+                progress_cb,
+                {
+                    "type": "tool",
+                    "tool": "picnic_search",
+                    "phase": "start",
+                    "ingredient": ingredient.name,
+                    "query": query,
+                },
+            )
+            try:
+                search_result = await session.call_tool("picnic_search", {"query": query, "limit": 5})
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Picnic search failed for %s: %s", ingredient.name, exc)
+                failures.append({"ingredient": ingredient.name, "reason": "search_failed"})
+                await _emit(
+                    progress_cb,
+                    {
+                        "type": "tool",
+                        "tool": "picnic_search",
+                        "phase": "error",
+                        "ingredient": ingredient.name,
+                        "query": query,
+                        "reason": "search_failed",
+                    },
+                )
+                continue
+
+            payload = _extract_json_payload(search_result)
+            products = payload.get("results") if isinstance(payload, dict) else None
+            if not products:
+                failures.append({"ingredient": ingredient.name, "reason": "no_results"})
+                await _emit(
+                    progress_cb,
+                    {
+                        "type": "tool",
+                        "tool": "picnic_search",
+                        "phase": "error",
+                        "ingredient": ingredient.name,
+                        "query": query,
+                        "reason": "no_results",
+                    },
+                )
+                continue
+
+            product = _pick_product(products, ingredient)
+            if not product or "id" not in product:
+                failures.append({"ingredient": ingredient.name, "reason": "no_match"})
+                await _emit(
+                    progress_cb,
+                    {
+                        "type": "tool",
+                        "tool": "picnic_search",
+                        "phase": "error",
+                        "ingredient": ingredient.name,
+                        "query": query,
+                        "reason": "no_match",
+                    },
+                )
+                continue
+
+            await _emit(
+                progress_cb,
+                {
+                    "type": "tool",
+                    "tool": "picnic_search",
+                    "phase": "success",
+                    "ingredient": ingredient.name,
+                    "query": query,
+                    "results": len(products),
+                    "product": product.get("name"),
+                },
+            )
+
+            count = _infer_cart_quantity(ingredient)
+            try:
+                await _emit(
+                    progress_cb,
+                    {
+                        "type": "tool",
+                        "tool": "picnic_add_to_cart",
+                        "phase": "start",
+                        "ingredient": ingredient.name,
+                        "product": product.get("name"),
+                        "count": count,
+                    },
+                )
+                await session.call_tool("picnic_add_to_cart", {"productId": product["id"], "count": count})
+                successful.append({"ingredient": ingredient.name, "product": product.get("name"), "count": count})
+                await _emit(
+                    progress_cb,
+                    {
+                        "type": "tool",
+                        "tool": "picnic_add_to_cart",
+                        "phase": "success",
+                        "ingredient": ingredient.name,
+                        "product": product.get("name"),
+                        "count": count,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to add %s to Picnic cart: %s", ingredient.name, exc)
+                failures.append({"ingredient": ingredient.name, "reason": "add_failed"})
+                await _emit(
+                    progress_cb,
+                    {
+                        "type": "tool",
+                        "tool": "picnic_add_to_cart",
+                        "phase": "error",
+                        "ingredient": ingredient.name,
+                        "product": product.get("name"),
+                        "count": count,
+                        "reason": "add_failed",
+                    },
+                )
+
+        cart_result = await session.call_tool("picnic_get_cart", {})
+        cart_payload = _extract_json_payload(cart_result)
+        await _emit(
+            progress_cb,
+            {
+                "type": "tool",
+                "tool": "picnic_get_cart",
+                "phase": "success",
+            },
+        )
+
+    if failures:
+        logger.info("Picnic cart issues: %s", failures)
+    if successful:
+        logger.info("Picnic cart additions: %s", successful)
+
+    return _derive_cart_url(cart_payload if isinstance(cart_payload, dict) else None)
+
+
+async def groceries_checkout(
+    ingredients: List[Ingredient],
+    progress_cb: ProgressReporter | None = None,
+) -> str:
+    username = os.getenv("PICNIC_USERNAME")
+    password = os.getenv("PICNIC_PASSWORD")
+
+    if not ingredients:
+        await _emit(progress_cb, {"type": "status", "message": "Shopping list empty; skipping cart creation."})
+        return os.getenv("PICNIC_CART_URL", "https://app.picnic.app/cart")
+    if not username or not password:
+        logger.debug("PICNIC credentials missing; returning demo cart URL")
+        await _emit(progress_cb, {"type": "status", "message": "PICNIC credentials missing; returning demo cart URL."})
+        return "https://example.com/demo-cart"
+
+    try:
+        return await _checkout_via_mcp(ingredients, username, password, progress_cb)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Picnic MCP checkout failed: %s", exc)
+        await _emit(progress_cb, {"type": "status", "message": "Picnic MCP checkout failed; returning demo cart URL."})
+        return "https://example.com/demo-cart"
 
 
 __all__ = [
