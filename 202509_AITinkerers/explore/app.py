@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -15,12 +14,11 @@ from domain import (
     FoodPrefs,
     Goal,
     Profile,
-    WeekPlan,
-    aggregate_ingredients,
-    collect_agent,
-    compute_targets,
+    ProgressCallback,
+    generate_week_plan,
     groceries_checkout,
-    recipes_agent,
+    update_prefs_from_text,
+    update_profile_from_text,
 )
 
 load_dotenv()
@@ -35,9 +33,6 @@ except Exception:  # noqa: BLE001 - swallow missing creds on purpose
 app = FastAPI(title="Nutrition Coach – Prototype 1")
 
 _STATE_STORE: Dict[str, CoachState] = {}
-
-ProgressCallback = Callable[[Dict[str, Any]], Awaitable[None]]
-
 
 class StageRequest(BaseModel):
     session_id: str
@@ -59,7 +54,9 @@ def _validate_stage_three_ready(state: CoachState) -> None:
     if not (profile_complete(state.profile) and goal_complete(state.goal)):
         raise HTTPException(status_code=400, detail="Profile and goal are incomplete")
     if state.target_calories is None:
-        compute_targets(state)
+        state.target_calories = 2000
+    if state.tdee is None:
+        state.tdee = 2200
     if not prefs_complete(state.prefs):
         raise HTTPException(status_code=400, detail="Food preferences are incomplete")
 
@@ -84,14 +81,6 @@ def prefs_complete(prefs: FoodPrefs) -> bool:
     return len(prefs.breakfasts_like) >= 2 and len(prefs.mains_like) >= 3
 
 
-def summarise_state(state: CoachState) -> str:
-    summary = state.model_dump()
-    # keep payload small for the prompt
-    summary.pop("plan", None)
-    summary.pop("cart_url", None)
-    return json.dumps(summary, ensure_ascii=False)
-
-
 def transcribe_audio(audio_b64: str) -> str:
     if not _eleven_client:
         raise HTTPException(status_code=503, detail="ElevenLabs client unavailable")
@@ -112,21 +101,6 @@ def transcribe_audio(audio_b64: str) -> str:
     return getattr(response, "text", str(response))
 
 
-async def run_collect_agent(user_text: str, state: CoachState):
-    prompt = (
-        "Known state: "
-        + summarise_state(state)
-        + ". New user reply: "
-        + user_text
-    )
-    result = await collect_agent.run(prompt)
-    output = result.output
-    state.profile = state.profile.model_copy(update=output.profile.model_dump(exclude_none=True))
-    state.goal = state.goal.model_copy(update=output.goal.model_dump(exclude_none=True))
-    state.prefs = state.prefs.model_copy(update=output.prefs.model_dump(exclude_none=True))
-    return output.say
-
-
 async def _run_stage_three(state: CoachState, progress_cb: ProgressCallback | None = None) -> Dict[str, Any]:
     async def emit(event: Dict[str, Any]) -> None:
         if progress_cb:
@@ -134,16 +108,10 @@ async def _run_stage_three(state: CoachState, progress_cb: ProgressCallback | No
 
     await emit({"type": "status", "message": "Generating personalized recipes..."})
 
-    prompt = (
-        "User profile and goal: "
-        + summarise_state(state)
-        + ". Generate the recipes now."
-    )
-    result = await recipes_agent.run(prompt)
-    output = result.output
+    plan, shopping_list, say = generate_week_plan(state)
+    breakfasts = plan.breakfasts
+    mains = plan.mains
 
-    breakfasts = output.breakfasts
-    mains = output.mains
     await emit(
         {
             "type": "recipes",
@@ -153,14 +121,10 @@ async def _run_stage_three(state: CoachState, progress_cb: ProgressCallback | No
         }
     )
 
-    state.plan = WeekPlan(
-        breakfasts=breakfasts,
-        mains=mains,
-        target_calories=state.target_calories or 0,
-        tdee=state.tdee or 0,
-    )
+    state.plan = plan
+    state.target_calories = plan.target_calories
+    state.tdee = plan.tdee
 
-    shopping_list = aggregate_ingredients(breakfasts + mains)
     await emit(
         {
             "type": "status",
@@ -172,8 +136,8 @@ async def _run_stage_three(state: CoachState, progress_cb: ProgressCallback | No
     state.cart_url = cart_url
 
     response = {
-        "say": output.say or "Plan ready. Here's your grocery list and cart link.",
-        "plan": state.plan.model_dump(),
+        "say": say,
+        "plan": plan.model_dump(),
         "shopping_list": [item.model_dump() for item in shopping_list],
         "cart_url": cart_url,
     }
@@ -195,18 +159,7 @@ async def stage_one(request: StageRequest):
     if not user_text:
         raise HTTPException(status_code=400, detail="Provide text or audio_base64")
 
-    say = await run_collect_agent(user_text, state)
-
-    if profile_complete(state.profile) and goal_complete(state.goal) and state.tdee is None:
-        try:
-            compute_targets(state)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        say = (
-            f"Great. Maintenance is about {state.tdee} kcal/day. "
-            f"Target is roughly {state.target_calories} kcal/day. "
-            "Tell me two breakfasts and three lunch or dinner ideas you enjoy."
-        )
+    say = update_profile_from_text(state, user_text)
 
     return {"say": say, "state": state.model_dump()}
 
@@ -223,13 +176,7 @@ async def stage_two(request: StageRequest):
     if not user_text:
         raise HTTPException(status_code=400, detail="Provide text or audio_base64")
 
-    say = await run_collect_agent(user_text, state)
-
-    if prefs_complete(state.prefs):
-        say = (
-            "Awesome, I have your preferences. Ready to build this week's plan "
-            "and shopping list?"
-        )
+    say = update_prefs_from_text(state, user_text)
 
     return {"say": say, "state": state.model_dump()}
 

@@ -1,6 +1,10 @@
 set shell := ["bash", "-lc"]
 set dotenv-load := true
 
+# Launch the sandbox FastAPI backend (explore/app.py).
+backend:
+	uv run uvicorn app:app --reload
+
 # Launch the minimal stage-based Streamlit demo.
 stage:
 	uv run streamlit run streamlit_stage_app.py
@@ -9,11 +13,22 @@ stage:
 chat:
 	uv run chainlit run chatlit_app.py -w --port 8001
 
-# Start both demos plus the backend for quick tinkering.
-stack:
+# Start the Picnic MCP helper.
+mcp:
+	npx -y mcp-picnic
+
+# Start backend + selected UIs (+ MCP). ui can be "streamlit", "chat", or "both".
+dev ui="both":
 	#!/usr/bin/env bash
 	trap 'kill $(jobs -p)' INT TERM EXIT
-	PYTHONPATH=.. uv run uvicorn app:app --reload &
-	uv run streamlit run streamlit_stage_app.py &
-	uv run chainlit run chatlit_app.py -w --port 8001 &
+	npx -y mcp-picnic &
+	uv run uvicorn app:app --reload &
+	if [ "{{ ui }}" = "streamlit" ]; then
+		uv run streamlit run streamlit_stage_app.py &
+	elif [ "{{ ui }}" = "chat" ]; then
+		uv run chainlit run chatlit_app.py -w --port 8001 &
+	else
+		uv run streamlit run streamlit_stage_app.py &
+		uv run chainlit run chatlit_app.py -w --port 8001 &
+	fi
 	wait

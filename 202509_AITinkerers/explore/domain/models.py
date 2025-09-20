@@ -1,10 +1,4 @@
-"""Subset of domain models and helpers for quick experiments.
-
-These are the core Pydantic models plus utility functions used by the
-prototype nutrition coach flows. The full application keeps the authoritative
-version under the main app/server packages; this copy is intentionally minimal
-for sandboxing ideas inside ``explore``.
-"""
+"""Core data models and calorie helpers for the explore sandbox."""
 
 from __future__ import annotations
 
@@ -131,3 +125,25 @@ def aggregate_ingredients(recipes: List[Recipe]) -> List[Ingredient]:
         Ingredient(name=name, qty=round(qty, 2), unit=unit)
         for (name, unit), qty in accumulator.items()
     ]
+
+
+__all__ = [
+    "Activity",
+    "ACTIVITY_FACTOR",
+    "CoachState",
+    "FoodPrefs",
+    "GAIN_RATES",
+    "Goal",
+    "Ingredient",
+    "KCAL_PER_KG",
+    "LOSS_RATES",
+    "Profile",
+    "RateCat",
+    "Recipe",
+    "WeekPlan",
+    "aggregate_ingredients",
+    "compute_targets",
+    "daily_calorie_delta",
+    "mifflin_st_jeor",
+    "tdee_from_profile",
+]

@@ -12,13 +12,21 @@ import httpx
 
 API_BASE = os.environ.get("API_BASE", "http://127.0.0.1:8000")
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", "60"))
+API_CONNECT_TIMEOUT = float(os.environ.get("API_CONNECT_TIMEOUT", "10"))
+API_WRITE_TIMEOUT = float(os.environ.get("API_WRITE_TIMEOUT", "30"))
 
 PLAN_KEYWORDS = {"plan", "generate", "shopping", "recipe"}
 
 
 async def post_stage(stage: int, payload: dict) -> dict:
     url = f"{API_BASE}/stage/{stage}"
-    async with httpx.AsyncClient(timeout=API_TIMEOUT) as client:
+    timeout = httpx.Timeout(
+        connect=API_CONNECT_TIMEOUT,
+        read=API_TIMEOUT,
+        write=API_WRITE_TIMEOUT,
+        pool=None,
+    )
+    async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.post(url, json=payload)
     response.raise_for_status()
     return response.json()
@@ -56,9 +64,27 @@ async def handle_message(message: cl.Message) -> None:
 
     try:
         data = await post_stage(stage, payload)
-    except httpx.HTTPError as exc:
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text.strip() or exc.response.reason_phrase
         await cl.Message(
-            f"Couldn't reach the backend ({exc}). Is {API_BASE} running?"
+            f"Backend error {exc.response.status_code}: {detail}"
+        ).send()
+        return
+    except httpx.ConnectTimeout:
+        await cl.Message(
+            f"Backend did not respond within {API_CONNECT_TIMEOUT:.0f}s. "
+            "Ensure the API is running or increase API_CONNECT_TIMEOUT."
+        ).send()
+        return
+    except httpx.ReadTimeout:
+        await cl.Message(
+            f"Backend took longer than {API_TIMEOUT:.0f}s to reply. "
+            "Try again or raise API_TIMEOUT."
+        ).send()
+        return
+    except httpx.RequestError as exc:
+        await cl.Message(
+            f"Network error while contacting {API_BASE}: {exc}"
         ).send()
         return
 

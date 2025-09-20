@@ -16,6 +16,8 @@ import streamlit as st
 
 API_BASE = os.environ.get("API_BASE", "http://127.0.0.1:8000")
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", "60"))
+API_CONNECT_TIMEOUT = float(os.environ.get("API_CONNECT_TIMEOUT", "10"))
+API_WRITE_TIMEOUT = float(os.environ.get("API_WRITE_TIMEOUT", "30"))
 
 DEFAULT_STAGE1 = "Share age, height, weight, activity level, and your goal."
 DEFAULT_STAGE2 = "List breakfast and main dishes you enjoy plus any allergies."
@@ -23,7 +25,13 @@ DEFAULT_STAGE2 = "List breakfast and main dishes you enjoy plus any allergies."
 
 @st.cache_resource(show_spinner=False)
 def get_client() -> httpx.Client:
-    return httpx.Client(base_url=API_BASE, timeout=API_TIMEOUT)
+    timeout = httpx.Timeout(
+        connect=API_CONNECT_TIMEOUT,
+        read=API_TIMEOUT,
+        write=API_WRITE_TIMEOUT,
+        pool=None,
+    )
+    return httpx.Client(base_url=API_BASE, timeout=timeout)
 
 
 def ensure_session_state() -> None:
@@ -38,8 +46,30 @@ def call_stage(stage: str, text: str | None = None) -> Dict[str, Any]:
         payload["text"] = text.strip()
 
     client = get_client()
-    response = client.post(f"/stage/{stage}", json=payload)
-    response.raise_for_status()
+    try:
+        response = client.post(f"/stage/{stage}", json=payload)
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text.strip() or exc.response.reason_phrase
+        st.error(f"Backend error {exc.response.status_code}: {detail}")
+        raise
+    except httpx.ConnectTimeout:
+        st.error(
+            "Unable to reach the backend within "
+            f"{API_CONNECT_TIMEOUT:.0f}s. Ensure {API_BASE} is running or set "
+            "API_CONNECT_TIMEOUT to a higher value."
+        )
+        raise
+    except httpx.ReadTimeout:
+        st.error(
+            "Backend took longer than "
+            f"{API_TIMEOUT:.0f}s to respond. Try again or increase API_TIMEOUT."
+        )
+        raise
+    except httpx.RequestError as exc:
+        st.error(f"Network error while contacting {API_BASE}: {exc}")
+        raise
+
     return response.json()
 
 
@@ -51,8 +81,10 @@ def render_stage(stage: str, label: str, default_text: str) -> None:
             return
         try:
             data = call_stage(stage, text)
-        except httpx.HTTPError as exc:  # surface basic error info
-            st.error(f"Request failed ({exc!r}). Is the API running at {API_BASE}?")
+        except httpx.HTTPStatusError:
+            return
+        except httpx.RequestError as exc:
+            st.error(f"Network error while contacting {API_BASE}: {exc}")
             return
         st.session_state.log.append((stage, text.strip(), data.get("say", "")))
 
@@ -61,8 +93,10 @@ def render_stage_three() -> None:
     if st.button("Generate weekly plan", type="primary", use_container_width=True):
         try:
             data = call_stage("3")
-        except httpx.HTTPError as exc:
-            st.error(f"Request failed ({exc!r}). Is the API running at {API_BASE}?")
+        except httpx.HTTPStatusError:
+            return
+        except httpx.RequestError as exc:
+            st.error(f"Network error while contacting {API_BASE}: {exc}")
             return
         st.session_state.log.append(("3", "<generate plan>", data.get("say", "")))
         if plan := data.get("plan"):
