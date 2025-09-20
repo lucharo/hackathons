@@ -12,8 +12,7 @@ class DietaryType(str, Enum):
 
 class MealType(str, Enum):
     BREAKFAST = "breakfast"
-    LUNCH = "lunch"
-    DINNER = "dinner"
+    LUNCH_DINNER = "lunch/dinner"
 
 
 class Nutrition(BaseModel):
