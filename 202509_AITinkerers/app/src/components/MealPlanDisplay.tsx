@@ -30,7 +30,6 @@ interface MealPlanDisplayProps {
 export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedback, setFeedback] = useState('');
   const [showIngredientsPage, setShowIngredientsPage] = useState(false);
 
 
@@ -214,7 +213,6 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
               <button
                 onClick={() => {
                   setShowFeedbackModal(false);
-                  setFeedback('');
                 }}
                 className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
               >

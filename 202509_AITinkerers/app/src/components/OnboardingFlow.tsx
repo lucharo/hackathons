@@ -4,7 +4,6 @@ import DietaryPreferencesScreen from './DietaryPreferencesScreen';
 import GoalsScreen from './GoalsScreen';
 import MealPlanGeneratingScreen from './MealPlanGeneratingScreen';
 import MealPlanDisplay, { type MealPlan } from './MealPlanDisplay';
-import exampleMealPlan from '../example.json';
 
 export interface OnboardingData {
   mealTypes: string[];
