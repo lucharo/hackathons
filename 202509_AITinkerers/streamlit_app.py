@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import uuid
 import os
 from typing import Any, Dict, List
@@ -12,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEFAULT_API_BASE = "http://127.0.0.1:8000"
-DEFAULT_TIMEOUT = 20.0
+DEFAULT_TIMEOUT = 120.0
 DEFAULT_STAGE1 = (
     "Hi, I'm a 34-year-old male, 182 cm, 82 kg, moderately active, and I'd like to "
     "lose weight fast."
@@ -50,6 +49,7 @@ def ensure_session_state() -> None:
     st.session_state.setdefault("cart_url", None)
 
 
+
 def call_api(method: str, endpoint: str, json_payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
     client = get_client()
     try:
@@ -80,7 +80,8 @@ def handle_stage(stage: str, text: str) -> None:
         st.warning("Please provide some text before submitting.")
         return
     payload = {"session_id": st.session_state.session_id, "text": text.strip()}
-    data = call_api("POST", f"/stage/{stage}", payload)
+    with st.spinner("Contacting backend..."):
+        data = call_api("POST", f"/stage/{stage}", payload)
     append_turn(stage, text.strip(), data.get("say", ""))
     st.session_state.state_payload = data.get("state")
     if data.get("plan"):
@@ -93,11 +94,19 @@ def handle_stage(stage: str, text: str) -> None:
 
 def handle_stage_three() -> None:
     payload = {"session_id": st.session_state.session_id}
-    data = call_api("POST", "/stage/3", payload)
-    append_turn("3", "<generate plan>", data.get("say", ""))
-    st.session_state.plan_payload = data.get("plan")
-    st.session_state.shopping_list = data.get("shopping_list")
-    st.session_state.cart_url = data.get("cart_url")
+    try:
+        with st.status("Generating weekly plan...", expanded=True) as status:
+            status.update(label="Calling backend...", state="running")
+            data = call_api("POST", "/stage/3", payload)
+            status.update(label="Processing response...", state="running")
+            append_turn("3", "<generate plan>", data.get("say", ""))
+            st.session_state.plan_payload = data.get("plan")
+            st.session_state.shopping_list = data.get("shopping_list")
+            st.session_state.cart_url = data.get("cart_url")
+            status.update(label="Plan ready", state="complete")
+    except httpx.HTTPError:
+        # call_api already surfaced an error
+        st.stop()
 
 
 ensure_session_state()
