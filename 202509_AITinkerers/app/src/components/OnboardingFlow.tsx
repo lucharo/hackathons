@@ -3,6 +3,7 @@ import MealTypeScreen from './MealTypeScreen';
 import DietaryPreferencesScreen from './DietaryPreferencesScreen';
 import GoalsScreen from './GoalsScreen';
 import MealPlanGeneratingScreen from './MealPlanGeneratingScreen';
+import MealPlanDisplay, { type MealPlan } from './MealPlanDisplay';
 
 export interface OnboardingData {
   mealTypes: string[];
@@ -17,6 +18,7 @@ export default function OnboardingFlow() {
     dietaryPreferences: [],
     goals: []
   });
+  const [generatedMealPlan, setGeneratedMealPlan] = useState<MealPlan | null>(null);
 
   const handleMealTypesSubmit = (selectedTypes: string[]) => {
     setOnboardingData(prev => ({ ...prev, mealTypes: selectedTypes }));
@@ -54,8 +56,9 @@ export default function OnboardingFlow() {
 
       const mealPlan = await response.json();
       console.log('Generated meal plan:', mealPlan);
-
-      // TODO: Handle successful meal plan generation (e.g., navigate to meal plan view)
+      
+      setGeneratedMealPlan(mealPlan);
+      setCurrentStep(4); // Move to meal plan display
 
     } catch (error) {
       console.error('Error generating meal plan:', error);
@@ -67,6 +70,16 @@ export default function OnboardingFlow() {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleStartOver = () => {
+    setCurrentStep(0);
+    setOnboardingData({
+      mealTypes: [],
+      dietaryPreferences: [],
+      goals: []
+    });
+    setGeneratedMealPlan(null);
   };
 
   return (
@@ -93,6 +106,12 @@ export default function OnboardingFlow() {
       )}
       {currentStep === 3 && (
         <MealPlanGeneratingScreen />
+      )}
+      {currentStep === 4 && generatedMealPlan && (
+        <MealPlanDisplay 
+          mealPlan={generatedMealPlan}
+          onStartOver={handleStartOver}
+        />
       )}
     </div>
   );
