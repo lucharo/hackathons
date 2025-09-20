@@ -2,6 +2,7 @@ import { useState } from 'react';
 import MealTypeScreen from './MealTypeScreen';
 import DietaryPreferencesScreen from './DietaryPreferencesScreen';
 import GoalsScreen from './GoalsScreen';
+import MealPlanGeneratingScreen from './MealPlanGeneratingScreen';
 
 export interface OnboardingData {
   mealTypes: string[];
@@ -31,6 +32,7 @@ export default function OnboardingFlow() {
     setOnboardingData(prev => ({ ...prev, goals: selectedGoals }));
     // TODO: Send data to backend and proceed to main app
     console.log('Onboarding complete:', { ...onboardingData, goals: selectedGoals });
+    setCurrentStep(3); // Move to loading screen
   };
 
   const handleBack = () => {
@@ -60,6 +62,9 @@ export default function OnboardingFlow() {
           onBack={handleBack}
           initialSelected={onboardingData.goals}
         />
+      )}
+      {currentStep === 3 && (
+        <MealPlanGeneratingScreen />
       )}
     </div>
   );
