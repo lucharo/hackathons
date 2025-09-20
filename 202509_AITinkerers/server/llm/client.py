@@ -52,11 +52,11 @@ def to_pydantic_history(messages: list[Message]) -> list[ModelMessage]:
 
 
 class BaseLLMClient:
-    """PydanticAI-based LLM client with MCP integration."""
+    """PydanticAI-based LLM client with conditional MCP integration."""
 
     model: str
     agent: Agent
-    mcp_server: MCPServerStdio
+    mcp_server: MCPServerStdio | None
 
     def __init__(self, model: str = None):
         self.model = model
@@ -66,7 +66,11 @@ class BaseLLMClient:
         if not os.getenv("ANTHROPIC_API_KEY") and settings.anthropic_api_key:
             os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
 
-        self._initialize_mcp_server()
+        # Only initialize MCP if enabled
+        self.mcp_server = None
+        if settings.enable_mcp:
+            self._initialize_mcp_server()
+
         self._initialize_agent()
 
     def _initialize_mcp_server(self):
@@ -134,10 +138,12 @@ class BaseLLMClient:
             else:
                 raise NotImplementedError(f"Model {self.model} is not supported")
 
-            # Create agent with appropriate output type
+            # Create agent with appropriate output type and conditional toolsets
+            toolsets = [self.mcp_server] if self.mcp_server is not None else []
+
             agent = Agent(
                 model_name,
-                toolsets=[self.mcp_server],
+                toolsets=toolsets,
                 output_type=response_model if response_model is not None else str,
                 model_settings={
                     "temperature": temperature,

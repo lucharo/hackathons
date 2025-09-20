@@ -19,11 +19,22 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
   const [copied, setCopied] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartSuccess, setCartSuccess] = useState(false);
+  const [picnicEnabled, setPicnicEnabled] = useState(false);
 
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+        // Check if Picnic integration should be enabled based on API base URL
+        // Enable if localhost/127.0.0.1 (local development), disable otherwise (production)
+        const isLocalDevelopment = apiBaseUrl && (
+          apiBaseUrl.includes('localhost') ||
+          apiBaseUrl.includes('127.0.0.1') ||
+          apiBaseUrl.includes('0.0.0.0')
+        );
+        setPicnicEnabled(isLocalDevelopment);
+
         const response = await fetch(`${apiBaseUrl}/buy-ingredients/generate`, {
           method: 'POST',
           headers: {
@@ -191,39 +202,41 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
         {/* Action Buttons - Above shopping list box */}
         {ingredients.length > 0 && (
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            {/* Add to Picnic Cart Button */}
-            <button
-              onClick={handleAddToCart}
-              disabled={addingToCart}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
-                cartSuccess
-                  ? 'bg-green-500 text-white border border-green-600'
-                  : addingToCart
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-orange-600 text-white hover:bg-orange-700'
-              }`}
-            >
-              {cartSuccess ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Added to Picnic Cart!
-                </>
-              ) : addingToCart ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Adding to cart... (this may take a few minutes)
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a2 2 0 002 2h6a2 2 0 002-2v-6" />
-                  </svg>
-                  Add to Picnic Cart
-                </>
-              )}
-            </button>
+            {/* Add to Picnic Cart Button - Only show if MCP is enabled */}
+            {picnicEnabled && (
+              <button
+                onClick={handleAddToCart}
+                disabled={addingToCart}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
+                  cartSuccess
+                    ? 'bg-green-500 text-white border border-green-600'
+                    : addingToCart
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                }`}
+              >
+                {cartSuccess ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Added to Picnic Cart!
+                  </>
+                ) : addingToCart ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Adding to cart... (this may take a few minutes)
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a2 2 0 002 2h6a2 2 0 002-2v-6" />
+                    </svg>
+                    Add to Picnic Cart
+                  </>
+                )}
+              </button>
+            )}
 
             {/* Copy Button */}
             <button

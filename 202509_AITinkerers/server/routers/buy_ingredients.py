@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from models.meal_planning import Meal, IngredientList
 from llm.client import BaseLLMClient, Message
+from config import settings
 
 router = APIRouter(tags=["buy-ingredients"])
 
@@ -58,6 +59,12 @@ class BuyIngredientsResponse(BaseModel):
 async def buy_ingredients(request: IngredientListRequest):
     """Add ingredients to Picnic cart using MCP integration."""
     try:
+        # Check if MCP is enabled
+        if not settings.enable_mcp:
+            return BuyIngredientsResponse(
+                success=False,
+                message="Picnic integration is not available in this environment. Please use the copy button to get your shopping list instead."
+            )
         # First, generate ingredient list from meals
         llm_client = BaseLLMClient(model="claude-sonnet-4-20250514")
 
