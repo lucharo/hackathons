@@ -102,11 +102,11 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
   };
 
   const formatIngredientsForClipboard = () => {
-    const header = "🛒 Shopping List\n" + "=".repeat(20) + "\n\n";
+    const greeting = "Hey!\n\nPlease could you order me the following ingredients via my Picnic account:\n\n";
     const ingredientsList = ingredients
       .map(ingredient => `• ${ingredient.name} - ${formatQuantity(ingredient.qty, ingredient.unit)}`)
       .join('\n');
-    return header + ingredientsList;
+    return greeting + ingredientsList;
   };
 
   const handleCopyToClipboard = async () => {
@@ -148,6 +148,36 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
           </p>
         </div>
 
+        {/* Copy Button - Above shopping list box */}
+        {ingredients.length > 0 && (
+          <div className="flex justify-center mb-6">
+            <button
+              onClick={handleCopyToClipboard}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
+                copied
+                  ? 'bg-green-500 text-white border border-green-600'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Create my grocery shopping prompt
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Simple Ingredients List */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="mb-4">
@@ -166,34 +196,6 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
                   </li>
                 ))}
               </ul>
-              
-              {/* Copy Button - Prominent bottom position */}
-              <div className="flex justify-center mt-6 pt-4 border-t border-gray-100">
-                <button
-                  onClick={handleCopyToClipboard}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-base transition-all duration-200 shadow-md hover:shadow-lg ${
-                    copied
-                      ? 'bg-green-500 text-white border border-green-600'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {copied ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Copied to Clipboard!
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Copy Shopping List
-                    </>
-                  )}
-                </button>
-              </div>
             </>
           )}
         </div>
