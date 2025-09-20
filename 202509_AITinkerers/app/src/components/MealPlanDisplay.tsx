@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import IngredientsPlaceholder from './IngredientsPlaceholder';
 
 export interface Nutrition {
   calories: number;
@@ -30,6 +31,7 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [showIngredientsPage, setShowIngredientsPage] = useState(false);
 
 
   const getMealTypeIcon = (mealType: string) => {
@@ -264,6 +266,11 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
   };
 
 
+  // Show ingredients placeholder if that state is true
+  if (showIngredientsPage) {
+    return <IngredientsPlaceholder onBack={() => setShowIngredientsPage(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -291,7 +298,10 @@ export default function MealPlanDisplay({ mealPlan }: MealPlanDisplayProps) {
           >
             Update this plan
           </button>
-          <button className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+          <button 
+            onClick={() => setShowIngredientsPage(true)}
+            className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
             Buy the ingredients!
           </button>
         </div>
