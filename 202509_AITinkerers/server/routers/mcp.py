@@ -11,7 +11,7 @@ async def generate_ingredient_list_from_meals(meals: list[Meal]):
         # Format meals for better readability
         meals_json = "\n".join([meal.model_dump_json() for meal in meals])
         
-        parse_ingredient_list_prompt = f"""Given the following meals, help me parse out a comprehensive list of ingredients for all the meals so I can generate a shopping list to cook all the meals.
+        parse_ingredient_list_prompt = f"""Given the following meals, help me parse out a list of ingredients for all the meals so I can generate a shopping list to cook all the meals.
 
         Meals:
         {meals_json}
