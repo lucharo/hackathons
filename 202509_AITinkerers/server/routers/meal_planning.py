@@ -24,8 +24,8 @@ async def generate_meal_plan(request: MealPlanRequest):
         Dietary preferences: {request.dietary_preferences}
         Goals: {request.goals}
 
-        In total, please generate 2 different breakfasts and 3 different lunch/dinner recipes.
-        The total number of breakfast servings should be 5 and the total number of lunch/dinner servings should be 10.
+        Please generate 2 meals which are breakfast meals. The first should have 2 servings and the second should have 3 servings.
+        Then generate 3 meals which are lunch/dinner meals. The first should have 3 servings, the second should have 4 servings, and the third should have 3 servings.
 
         Please return the meal plan in the following format:
         {MealPlan.model_json_schema()}
