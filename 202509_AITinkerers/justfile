@@ -1,9 +1,76 @@
 set shell := ["bash", "-lc"]
 set dotenv-load := true
 
+# Default command - show available commands
+default:
+	just --list
+
+# Start full stack (backend + frontend)
+dev env="local":
+	@echo "🚀 Starting full {{env}} development stack..."
+	@if [ "{{env}}" = "local" ]; then \
+		echo "Backend: http://localhost:8000"; \
+		echo "Frontend: http://localhost:5173"; \
+		echo "Features: MCP Picnic integration enabled"; \
+	fi
+	@echo ""
+	just backend {{env}} & just frontend {{env}}
+
+# Start backend only
+backend env="local":
+	@if [ "{{env}}" = "local" ]; then \
+		echo "🚀 Starting backend in development mode..."; \
+		cd server && ENVIRONMENT=development uv run uvicorn main:app --reload --port 8000; \
+	elif [ "{{env}}" = "prod" ]; then \
+		echo "🌐 Starting backend for production hosting..."; \
+		echo "MCP integration will be disabled"; \
+		cd server && ENVIRONMENT=production uv run uvicorn main:app --host 0.0.0.0 --port 8000; \
+	else \
+		echo "❌ Invalid environment: {{env}}. Use 'local' or 'prod'"; \
+		exit 1; \
+	fi
+
+# Start frontend only
+frontend env="local":
+	@if [ "{{env}}" = "local" ]; then \
+		echo "🚀 Starting frontend in development mode..."; \
+		cd app && VITE_API_BASE_URL=http://localhost:8000 npm run dev; \
+	elif [ "{{env}}" = "prod" ]; then \
+		echo "🌐 Building and serving frontend for production..."; \
+		echo "Using production API configuration"; \
+		cd app && npm run build && npm run preview -- --host 0.0.0.0 --port 5173; \
+	else \
+		echo "❌ Invalid environment: {{env}}. Use 'local' or 'prod'"; \
+		exit 1; \
+	fi
+
+# Additional tools
 chat:
 	uv run chainlit run explore/chatlit_app.py -w --port 8001
 
 mcp:
 	npx -y mcp-picnic
+
+# Development Setup
+install:
+	@echo "📥 Installing dependencies..."
+	@echo "Installing server dependencies..."
+	cd server && uv sync
+	@echo "Installing frontend dependencies..."
+	cd app && npm install
+
+setup-env:
+	@echo "⚙️  Setting up environment files..."
+	@if [ ! -f server/.env ]; then cp server/.env.example server/.env && echo "Created server/.env - please configure"; fi
+	@if [ ! -f app/.env ]; then cp app/.env.example app/.env && echo "Created app/.env - please configure"; fi
+
+# Utility Commands
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	cd app && rm -rf dist node_modules/.vite
+	cd server && rm -rf __pycache__ .pytest_cache
+
+# Show available commands
+help:
+	just --list
 

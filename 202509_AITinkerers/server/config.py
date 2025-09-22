@@ -21,6 +21,11 @@ class Settings:
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
         self.default_temperature = float(os.getenv("DEFAULT_TEMPERATURE", "0.7"))
         # self.default_max_tokens = int(os.getenv("DEFAULT_MAX_TOKENS", "8192")) if os.getenv("DEFAULT_MAX_TOKENS") else None
+
+        # MCP Configuration - only enable locally
+        self.enable_mcp = self._should_enable_mcp()
+        self.picnic_username = os.getenv("PICNIC_USERNAME")
+        self.picnic_password = os.getenv("PICNIC_PASSWORD")
     
     def _get_cors_origins(self) -> list[str]:
         """Get CORS origins from environment variable or use defaults based on environment."""
@@ -39,6 +44,23 @@ class Settings:
         if env_value:
             return [item.strip() for item in env_value.split(",")]
         return default
+
+    def _should_enable_mcp(self) -> bool:
+        """Determine if MCP should be enabled based on environment."""
+        # Disable in production environment
+        if self.environment == "production":
+            return False
+
+        # Enable in development environment
+        if self.environment == "development":
+            return True
+
+        # Enable if we have Picnic credentials (assumes local dev)
+        if os.getenv("PICNIC_USERNAME") and os.getenv("PICNIC_PASSWORD"):
+            return True
+
+        # Default to disabled for safety
+        return False
     
     @property
     def is_development(self) -> bool:

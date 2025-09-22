@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import meal_planning, buy_ingredients
+from config import settings
 
 app = FastAPI(
     title="Meal Coach API", 
@@ -43,3 +44,4 @@ async def health_check():
             "buy_ingredients": "available"
         }
     }
+

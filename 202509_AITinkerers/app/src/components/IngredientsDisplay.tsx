@@ -17,12 +17,24 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showNotSupportedModal, setShowNotSupportedModal] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
+  const [picnicEnabled, setPicnicEnabled] = useState(false);
 
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+        // Check if Picnic integration should be enabled based on API base URL
+        // Enable if localhost/127.0.0.1 (local development), disable otherwise (production)
+        const isLocalDevelopment = Boolean(apiBaseUrl && (
+          apiBaseUrl.includes('localhost') ||
+          apiBaseUrl.includes('127.0.0.1') ||
+          apiBaseUrl.includes('0.0.0.0')
+        ));
+        setPicnicEnabled(isLocalDevelopment);
+
         const response = await fetch(`${apiBaseUrl}/buy-ingredients/generate`, {
           method: 'POST',
           headers: {
@@ -136,8 +148,47 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
     }
   };
 
-  const handleOrderIngredientsClick = () => {
-    setShowNotSupportedModal(true);
+  const handleAddToCart = async () => {
+    if (!picnicEnabled) {
+      alert('Picnic integration is not available in this environment. Please use the copy button to get your shopping list instead.');
+      return;
+    }
+
+    setAddingToCart(true);
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+      const response = await fetch(`${apiBaseUrl}/buy-ingredients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meals: meals
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Cart response:', data);
+
+      if (data.success) {
+        setCartSuccess(true);
+        setTimeout(() => {
+          setCartSuccess(false);
+        }, 3000);
+      } else {
+        throw new Error(data.message || 'Failed to add to cart');
+      }
+
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      alert('Failed to add ingredients to Picnic cart. Please try again.');
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   return (
@@ -155,7 +206,45 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
 
         {/* Action Buttons - Above shopping list box */}
         {ingredients.length > 0 && (
-          <div className="flex flex-col gap-3 items-center mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+            {/* Add to Picnic Cart Button - Always show but grey out if disabled */}
+            <button
+              onClick={handleAddToCart}
+              disabled={addingToCart || !picnicEnabled}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                cartSuccess
+                  ? 'bg-green-500 text-white border border-green-600 hover:bg-green-600'
+                  : addingToCart
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : !picnicEnabled
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                  : 'bg-orange-600 text-white hover:bg-orange-700 hover:shadow-md'
+              }`}
+              title={!picnicEnabled ? 'Picnic integration available in local development only' : ''}
+            >
+              {cartSuccess ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Added to Picnic Cart!
+                </>
+              ) : addingToCart ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Adding to cart... (this may take a few minutes)
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a2 2 0 002 2h6a2 2 0 002-2v-6" />
+                  </svg>
+                  Add to Picnic Cart
+                </>
+              )}
+            </button>
+
+            {/* Copy Button */}
             <button
               onClick={handleCopyToClipboard}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
@@ -176,19 +265,9 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  Create my grocery shopping prompt
+                  Copy Shopping List
                 </>
               )}
-            </button>
-            
-            <button
-              onClick={handleOrderIngredientsClick}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md bg-orange-600 text-white hover:bg-orange-700"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13v6a2 2 0 002 2h8.5M17 13v6a2 2 0 01-2 2H9" />
-              </svg>
-              Order Ingredients
             </button>
           </div>
         )}
@@ -225,29 +304,6 @@ export default function IngredientsDisplay({ meals, onBack }: IngredientsDisplay
           </button>
         </div>
       </div>
-
-      {/* Not Supported Modal */}
-      {showNotSupportedModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4">
-            <div className="text-center">
-              <div className="text-3xl mb-3">📍</div>
-              <h2 className="text-lg font-medium text-gray-900 mb-2">
-                Coming Soon
-              </h2>
-              <p className="text-gray-600 text-sm mb-5">
-                Ingredient ordering not yet supported in your country.
-              </p>
-              <button
-                onClick={() => setShowNotSupportedModal(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm"
-              >
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
